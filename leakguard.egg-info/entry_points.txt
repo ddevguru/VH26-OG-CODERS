@@ -1,0 +1,2 @@
+[console_scripts]
+leakguard = interfaces.cli.main:app

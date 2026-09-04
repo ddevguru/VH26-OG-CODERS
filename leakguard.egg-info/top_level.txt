@@ -1,0 +1,5 @@
+core
+interfaces
+packages
+presentation
+services

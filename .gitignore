@@ -31,3 +31,11 @@ build/
 *.egg-info/
 *.egg
 
+node_modules/
+.next/
+dist/
+__pycache__/
+*.pyc
+
+# LeakGuard generated scan reports
+.leakguard/reports/

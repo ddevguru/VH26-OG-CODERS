@@ -2,11 +2,16 @@ from pathlib import Path
 from typing import Optional, List
 import sys
 import json
+import os
+import time
+import datetime
+import urllib.request
+import urllib.error
 import typer
 from rich.console import Console
 
 from core.common.config import LeakGuardConfig
-from core.common.models import Severity, Confidence
+from core.common.models import Severity, Confidence, ScanResult
 from services.scan.scanner import ProjectScanner
 from services.baseline.engine import BaselineEngine
 from presentation.terminal.formatter import TerminalFormatter
@@ -100,9 +105,35 @@ def scan(
                 json_dict = json_exporter.to_json_dict(scan_result)
                 console.print_json(json.dumps(json_dict))
 
-        else:  # text / cli
             formatter = TerminalFormatter(console)
             formatter.print_scan_result(scan_result, quiet=quiet, verbose=verbose)
+
+        # Auto-save report to .leakguard/reports if directory exists
+        try:
+            reports_dir = Path(target if target.is_dir() else target.parent) / ".leakguard" / "reports"
+            if reports_dir.exists():
+                json_exporter = JsonExporter()
+                json_exporter.write_json_file(scan_result, reports_dir / "latest_scan.json")
+        except Exception:
+            pass
+
+        # Auto-sync to SaaS server if logged in
+        creds = get_credentials()
+        if creds and creds.get("access_token"):
+            try:
+                from services.saas.sync import upload_scan_results
+                repo_name = target.resolve().name if target.is_dir() else target.resolve().parent.name
+                upload_scan_results(
+                    scan_result=scan_result,
+                    repository_name=repo_name,
+                    control_plane_url=creds.get("server_url", "http://127.0.0.1:8000"),
+                    api_token=creds["access_token"],
+                    organization_id=creds.get("organization_id"),
+                )
+                if not quiet:
+                    console.print("[bold green][OK] Live scan findings synced to LeakGuard Dashboard.[/bold green]")
+            except Exception:
+                pass
 
         # Fail-on threshold evaluation
         fail_threshold = fail_on.lower()
@@ -246,6 +277,169 @@ def fix(
         sys.exit(1)
 
 
+
+CREDENTIALS_FILE = Path.home() / ".leakguard" / "credentials.json"
+
+
+def get_credentials() -> Optional[dict]:
+    if CREDENTIALS_FILE.exists():
+        try:
+            return json.loads(CREDENTIALS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            return None
+    return None
+
+
+def save_credentials(data: dict) -> None:
+    CREDENTIALS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CREDENTIALS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
+def delete_credentials() -> None:
+    if CREDENTIALS_FILE.exists():
+        try:
+            CREDENTIALS_FILE.unlink()
+        except Exception:
+            pass
+
+
+@app.command()
+def login(
+    email: str = typer.Option(..., "--email", "-e", help="Account email address"),
+    password: str = typer.Option(..., "--password", "-p", help="Account password"),
+    url: str = typer.Option("http://127.0.0.1:8000", "--url", help="LeakGuard SaaS server URL"),
+) -> None:
+    """Authenticates CLI with LeakGuard Control Plane server for log sync and dashboard access."""
+    login_url = f"{url.rstrip('/')}/api/v1/auth/login"
+    payload = json.dumps({"email": email, "password": password}).encode("utf-8")
+    req = urllib.request.Request(login_url, data=payload, headers={"Content-Type": "application/json"})
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            data["server_url"] = url
+            data["email"] = email
+            save_credentials(data)
+            console.print(f"[bold green][OK] Successfully authenticated as '{email}'! Credentials saved.[/bold green]")
+            console.print(f"[bold cyan]Organization ID: {data.get('organization_id')} | Role: {data.get('role')}[/bold cyan]")
+    except urllib.error.HTTPError as e:
+        err_msg = e.read().decode("utf-8")
+        console.print(f"[bold red][Error] Login Failed (HTTP {e.code}): {err_msg}[/bold red]")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[bold red][Error] Could not connect to LeakGuard Control Plane at {url}: {e}[/bold red]")
+        sys.exit(1)
+
+
+@app.command()
+def logout() -> None:
+    """Logs out local CLI session and removes stored authentication tokens."""
+    delete_credentials()
+    console.print("[bold green][OK] Logged out successfully. Stored credentials removed.[/bold green]")
+
+
+@app.command()
+def init(
+    target: Path = typer.Argument(Path("."), help="Target repository directory to configure LeakGuard and install git hooks"),
+) -> None:
+    """One-time project setup: generates configuration (.leakguard.yml) and installs Git pre-push & pre-commit hooks."""
+    target = target.resolve()
+    if not target.is_dir():
+        console.print(f"[bold red][Error] Target '{target}' is not a directory.[/bold red]")
+        sys.exit(1)
+
+    # 1. Create .leakguard.yml config file
+    cfg_path = target / ".leakguard.yml"
+    if not cfg_path.exists():
+        default_cfg = """# LeakGuard Configuration File
+fail_on: error
+min_severity: info
+min_confidence: low
+exclude_patterns:
+  - "**/venv/**"
+  - "**/.venv/**"
+  - "**/__pycache__/**"
+  - "**/build/**"
+  - "**/dist/**"
+  - "**/.git/**"
+  - "**/.pytest_cache/**"
+include_patterns:
+  - "**/*.py"
+"""
+        cfg_path.write_text(default_cfg, encoding="utf-8")
+        console.print(f"[bold green][OK] Created project config at '{cfg_path}'[/bold green]")
+    else:
+        console.print(f"[bold yellow][INFO] Existing config found at '{cfg_path}'[/bold yellow]")
+
+    # 2. Create .leakguard/reports directory
+    reports_dir = target / ".leakguard" / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    console.print(f"[bold green][OK] Initialized report log directory at '{reports_dir}'[/bold green]")
+
+    # 3. Update .gitignore
+    gitignore_path = target / ".gitignore"
+    if gitignore_path.exists():
+        content = gitignore_path.read_text(encoding="utf-8")
+        if ".leakguard/reports" not in content:
+            with gitignore_path.open("a", encoding="utf-8") as f:
+                f.write("\n# LeakGuard generated scan reports\n.leakguard/reports/\n")
+            console.print("[bold green][OK] Added '.leakguard/reports/' to .gitignore[/bold green]")
+
+    # 4. Check & Install Git Hooks
+    git_hooks_dir = target / ".git" / "hooks"
+    if not git_hooks_dir.exists():
+        console.print(f"[bold yellow][WARN] No '.git' directory found in '{target}'. Git hooks omitted.[/bold yellow]")
+        console.print("[bold green][OK] LeakGuard initialization complete![/bold green]")
+        return
+
+    hook_script = """#!/bin/sh
+# LeakGuard Automated Pre-Push Resource Leak Guardrail Hook
+echo "[LeakGuard] Executing pre-push static resource lifetime scan..."
+
+mkdir -p .leakguard/reports
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+REPORT_FILE=".leakguard/reports/scan_${TIMESTAMP}.log"
+LATEST_JSON=".leakguard/reports/latest_scan.json"
+
+python -m leakguard scan . --format json --out "$LATEST_JSON" | tee "$REPORT_FILE"
+SCAN_EXIT_CODE=$?
+
+if [ $SCAN_EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "--------------------------------------------------------"
+    echo " [X] LeakGuard Pre-Push Check FAILED!"
+    echo " Resource leak findings detected in codebase."
+    echo " Scan log saved to: $REPORT_FILE"
+    echo " Fix resource leaks before pushing or run: python -m leakguard fix ."
+    echo "--------------------------------------------------------"
+    exit 1
+fi
+
+echo "[OK] LeakGuard Pre-Push Check Passed! Zero blocking leaks detected."
+exit 0
+"""
+
+    pre_push_hook = git_hooks_dir / "pre-push"
+    pre_push_hook.write_text(hook_script, encoding="utf-8")
+    try:
+        os.chmod(str(pre_push_hook), 0o755)
+    except Exception:
+        pass
+    console.print(f"[bold green][OK] Pre-Push Git Hook successfully installed at '{pre_push_hook}'[/bold green]")
+
+    pre_commit_hook = git_hooks_dir / "pre-commit"
+    if not pre_commit_hook.exists():
+        pre_commit_hook.write_text(hook_script, encoding="utf-8")
+        try:
+            os.chmod(str(pre_commit_hook), 0o755)
+        except Exception:
+            pass
+        console.print(f"[bold green][OK] Pre-Commit Git Hook successfully installed at '{pre_commit_hook}'[/bold green]")
+
+    console.print(f"\n[bold cyan][SUCCESS] LeakGuard successfully initialized for '{target.name}'![/bold cyan]")
+    console.print("[gray]Git operations (commit/push) will now auto-scan and report leaks to .leakguard/reports/[/gray]\n")
+
+
 @app.command()
 def dashboard(
     port: int = typer.Option(3000, "--port", "-p", help="Port for LeakGuard Commercial Web Dashboard"),
@@ -265,6 +459,7 @@ def version() -> None:
 
 if __name__ == "__main__":
     app()
+
 
 
 

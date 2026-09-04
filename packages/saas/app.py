@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 
 from packages.saas.config import settings
 from packages.saas.db.database import init_db, get_db, _SessionLocal
-from packages.saas.db.models import Rule
+from packages.saas.db.models import Rule, User, Organization, UserOrgRole, Policy, RoleEnum
+from packages.saas.auth.security import hash_password
 from packages.saas.middleware.rate_limiter import RateLimiterMiddleware
 from packages.saas.routers import (
     auth,
@@ -17,6 +18,7 @@ from packages.saas.routers import (
     baselines,
     integrations,
     audit_log,
+    admin,
 )
 
 
@@ -44,10 +46,45 @@ def seed_standard_rules(db=None):
             db.close()
 
 
+def seed_default_admin(db=None):
+    close_after = False
+    if db is None:
+        db = _SessionLocal()
+        close_after = True
+
+    try:
+        admin_user = db.query(User).filter(User.email == "admin@leakguard.io").first()
+        if not admin_user:
+            hashed_pwd = hash_password("Admin123!")
+            admin_user = User(email="admin@leakguard.io", hashed_password=hashed_pwd, full_name="System Administrator")
+            db.add(admin_user)
+            db.flush()
+
+            admin_org = db.query(Organization).filter(Organization.slug == "leakguard-admin").first()
+            if not admin_org:
+                admin_org = Organization(name="LeakGuard Admin Org", slug="leakguard-admin")
+                db.add(admin_org)
+                db.flush()
+
+            role = UserOrgRole(user_id=admin_user.id, org_id=admin_org.id, role=RoleEnum.ADMIN.value)
+            db.add(role)
+
+            policy = Policy(org_id=admin_org.id, name="Default Security Policy", min_severity="MEDIUM", is_default=True)
+            db.add(policy)
+
+            db.commit()
+    except Exception:
+        db.rollback()
+    finally:
+        if close_after:
+            db.close()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
     seed_standard_rules()
+    seed_default_admin()
     yield
 
 
@@ -83,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(baselines.router, prefix=api_prefix)
     app.include_router(integrations.router, prefix=api_prefix)
     app.include_router(audit_log.router, prefix=api_prefix)
+    app.include_router(admin.router, prefix=api_prefix)
 
     @app.get("/health", tags=["Health"])
     def health_check():

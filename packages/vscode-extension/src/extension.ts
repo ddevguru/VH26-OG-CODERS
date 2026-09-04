@@ -6,13 +6,20 @@ import { LeakGuardCodeActionProvider } from "./codeActionProvider";
 let diagnosticCollection: vscode.DiagnosticCollection;
 let engineBridge: EngineBridge;
 let hoverProvider: LeakGuardHoverProvider;
+let statusBarItem: vscode.StatusBarItem;
 
 export function activate(context: vscode.ExtensionContext) {
   diagnosticCollection = vscode.languages.createDiagnosticCollection("leakguard");
   engineBridge = new EngineBridge();
   hoverProvider = new LeakGuardHoverProvider();
 
-  context.subscriptions.push(diagnosticCollection);
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  statusBarItem.command = "leakguard.scanCurrentFile";
+  statusBarItem.text = "$(shield) LeakGuard: Ready";
+  statusBarItem.tooltip = "Click to run LeakGuard static analysis";
+  statusBarItem.show();
+
+  context.subscriptions.push(diagnosticCollection, statusBarItem);
 
   // Register Hover Provider for Python
   context.subscriptions.push(
@@ -56,6 +63,13 @@ export function activate(context: vscode.ExtensionContext) {
         const rootPath = folders[0].uri.fsPath;
         const diagnostics = await engineBridge.analyzePath(rootPath);
         processWorkspaceDiagnostics(diagnostics);
+        if (diagnostics.length === 0) {
+          statusBarItem.text = "$(check) LeakGuard: Workspace Clean";
+          statusBarItem.backgroundColor = undefined;
+        } else {
+          statusBarItem.text = `$(warning) LeakGuard: ${diagnostics.length} Leaks`;
+          statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+        }
         vscode.window.showInformationMessage(`LeakGuard Workspace Scan Completed: Found ${diagnostics.length} leak findings.`);
       }
     );
@@ -110,6 +124,15 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
 
+  // Auto-scan active editor on change
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+      if (editor && editor.document.languageId === "python") {
+        await scanFile(editor.document);
+      }
+    })
+  );
+
   // Auto-scan current active document on open if Python
   if (vscode.window.activeTextEditor && vscode.window.activeTextEditor.document.languageId === "python") {
     scanFile(vscode.window.activeTextEditor.document);
@@ -136,6 +159,14 @@ async function scanFile(document: vscode.TextDocument) {
 
   diagnosticCollection.set(document.uri, vsCodeDiags);
   hoverProvider.updateDiagnostics(document.uri, engineDiags);
+
+  if (vsCodeDiags.length === 0) {
+    statusBarItem.text = "$(check) LeakGuard: Clean";
+    statusBarItem.backgroundColor = undefined;
+  } else {
+    statusBarItem.text = `$(warning) LeakGuard: ${vsCodeDiags.length} Leak${vsCodeDiags.length > 1 ? "s" : ""}`;
+    statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+  }
 }
 
 function processWorkspaceDiagnostics(diagnostics: EngineDiagnostic[]) {

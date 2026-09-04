@@ -50,7 +50,10 @@ class ProjectScanner:
             return []
 
     def discover_files(self, target_path: Union[str, Path]) -> Tuple[List[Path], int]:
-        path = Path(target_path).resolve()
+        try:
+            path = Path(target_path).resolve()
+        except Exception as e:
+            raise FileNotFoundError(f"Invalid target path '{target_path}': {e}")
 
         if not path.exists():
             raise FileNotFoundError(f"Target path '{target_path}' does not exist.")
@@ -71,7 +74,27 @@ class ProjectScanner:
         if self.config.changed_only:
             all_candidates = self._get_git_changed_files(root_dir)
         else:
-            all_candidates = list(root_dir.rglob("*.py"))
+            # Safe traversal with symlink loop detection and file limit capping
+            visited_dirs = set()
+            try:
+                for candidate in root_dir.rglob("*"):
+                    if len(all_candidates) >= self.config.max_files_limit:
+                        logger.warning(f"File limit of {self.config.max_files_limit} reached during discovery.")
+                        break
+                    try:
+                        # Handle symlinks safely
+                        resolved = candidate.resolve()
+                        if candidate.is_dir():
+                            if resolved in visited_dirs:
+                                continue  # Avoid symlink loops
+                            visited_dirs.add(resolved)
+                        elif candidate.is_file() and candidate.suffix == ".py":
+                            all_candidates.append(candidate)
+                    except (OSError, RuntimeError) as e:
+                        logger.warning(f"Skipping inaccessible path '{candidate}': {e}")
+                        continue
+            except Exception as e:
+                logger.error(f"Error during file discovery in '{root_dir}': {e}")
 
         discovered: List[Path] = []
         skipped_count = 0

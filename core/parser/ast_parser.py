@@ -13,7 +13,10 @@ class ParserSecurityError(Exception):
 class PythonAstParser:
     """Safe Python source code parser wrapping standard library ast.parse()."""
 
-    MAX_AST_DEPTH = 500
+    DEFAULT_MAX_AST_DEPTH = 500
+
+    def __init__(self, max_depth: Optional[int] = None) -> None:
+        self.max_depth = max_depth or self.DEFAULT_MAX_AST_DEPTH
 
     def parse_string(self, source_code: str, filename: str = "<stdin>") -> ast.AST:
         """Parses Python source string into an ast.AST module without code execution."""
@@ -21,8 +24,9 @@ class PythonAstParser:
             tree = ast.parse(source_code, filename=filename, type_comments=True)
             self._verify_depth(tree, depth=1)
             return tree
+        except RecursionError:
+            raise ParserSecurityError(f"Python recursion limit hit parsing AST for '{filename}'.")
         except SyntaxError as e:
-            # Return empty module or reraise depending on tolerance
             raise e
 
     def parse_file(self, file_path: Union[str, Path]) -> ast.AST:
@@ -34,8 +38,8 @@ class PythonAstParser:
         return self.parse_string(source_code, filename=filename)
 
     def _verify_depth(self, node: ast.AST, depth: int) -> None:
-        if depth > self.MAX_AST_DEPTH:
-            raise ParserSecurityError(f"AST recursion depth limit ({self.MAX_AST_DEPTH}) exceeded.")
+        if depth > self.max_depth:
+            raise ParserSecurityError(f"AST recursion depth limit ({self.max_depth}) exceeded.")
         for child in ast.iter_child_nodes(node):
             self._verify_depth(child, depth + 1)
 

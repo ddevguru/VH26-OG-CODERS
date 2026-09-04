@@ -16,7 +16,7 @@ class AnalysisEngine:
 
     def __init__(self, config: Optional[LeakGuardConfig] = None) -> None:
         self.config = config or LeakGuardConfig()
-        self.parser = PythonAstParser()
+        self.parser = PythonAstParser(max_depth=self.config.max_ast_depth)
         self.rule = ResourceLeakRule()
 
     def analyze_file(self, file_path: Union[str, Path]) -> List[Diagnostic]:

@@ -4,8 +4,8 @@
 
 - **Total Corpus Fixtures**: 320
 - **Total Lines of Code (LOC)**: 1710
-- **Scan Duration**: 1.207 seconds
-- **Throughput**: 265.15 files/sec (1416.88 LOC/sec)
+- **Scan Duration**: 1.28 seconds
+- **Throughput**: 250.07 files/sec (1336.33 LOC/sec)
 - **Peak Memory Usage**: 0.28 MB
 
 ---

@@ -1,0 +1,46 @@
+name: 'LeakGuard Resource Leak Scanner'
+description: 'AST-Based Static Resource Leak Detection for Java in CI/CD'
+inputs:
+  path:
+    description: 'Path to Java repository directory or source file'
+    required: false
+    default: '.'
+  threshold:
+    description: 'Minimum severity threshold to trigger failure (info, warning, error, critical)'
+    required: false
+    default: 'error'
+  output_format:
+    description: 'Output format (cli, json, sarif)'
+    required: false
+    default: 'sarif'
+  sarif_file:
+    description: 'File path to write SARIF output report'
+    required: false
+    default: 'leakguard-results.sarif'
+  fail_on_leak:
+    description: 'Exit with non-zero code if threshold is violated'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    - name: Install LeakGuard
+      shell: bash
+      run: |
+        pip install tree-sitter tree-sitter-java rich typer pydantic
+        pip install -e .
+
+    - name: Run LeakGuard Analysis
+      shell: bash
+      run: |
+        leakguard scan "${{ inputs.path }}" \
+          --threshold "${{ inputs.threshold }}" \
+          --format "${{ inputs.output_format }}" \
+          --out "${{ inputs.sarif_file }}" \
+          --fail-on-leak="${{ inputs.fail_on_leak }}"

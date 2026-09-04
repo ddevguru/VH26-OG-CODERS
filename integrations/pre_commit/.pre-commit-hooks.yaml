@@ -1,0 +1,7 @@
+- id: leakguard
+  name: LeakGuard Resource Leak Detector
+  description: AST-based static resource leak detector for Java source code
+  entry: leakguard scan
+  language: python
+  types: [java]
+  pass_filenames: true

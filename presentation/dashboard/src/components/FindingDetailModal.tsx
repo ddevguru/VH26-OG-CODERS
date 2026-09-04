@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, CheckCircle, AlertOctagon, HelpCircle, Code, Sparkles, CheckCheck } from "lucide-react";
+import { X, CheckCircle, AlertOctagon, Code, Sparkles, CheckCheck } from "lucide-react";
 import { FindingItem, api } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -79,55 +79,55 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
   const remediation = finding.description || "Enclose resource initialization inside a standard context manager ('with' or 'async with') to guarantee cleanup across all execution paths.";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#0e1626] border border-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="glass-card border border-white/[0.1] rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-[#11192e]">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-950/60 text-red-400 border border-red-800/40 rounded-lg">
+        <div className="px-8 py-5 border-b border-white/[0.08] flex items-center justify-between bg-[#080d18]/80">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
               <AlertOctagon className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white tracking-wide">{finding.title}</h2>
-              <p className="text-xs text-gray-400 font-mono">Rule: {finding.rule_id} • Fingerprint: {finding.fingerprint}</p>
+              <h2 className="text-base font-bold text-white tracking-tight">{finding.title}</h2>
+              <p className="text-xs text-slate-400 font-mono-code">Rule: {finding.rule_id} • Fingerprint: {finding.fingerprint}</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-gray-800 transition-colors"
+            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/[0.06] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Body */}
-        <div className="p-6 overflow-y-auto space-y-6 text-sm">
+        <div className="p-8 overflow-y-auto space-y-6 text-xs">
           {/* Status Badges Header */}
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-gray-900/60 border border-gray-800">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4 p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+            <div className="flex flex-wrap items-center gap-4">
               <div>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Severity</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-1">Severity</span>
                 <StatusBadge text={finding.severity} type="severity" />
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Confidence</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-1">Confidence</span>
                 <StatusBadge text={finding.confidence} type="confidence" />
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Classification</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-1">Classification</span>
                 <StatusBadge text={finding.classification} type="classification" />
               </div>
               <div>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-semibold">Current Status</span>
+                <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-bold mb-1">Current Status</span>
                 <StatusBadge text={finding.status} type="status" />
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 disabled={remediating}
                 onClick={handleTriggerAIRemediation}
-                className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition-all"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 {remediating ? "Synthesizing AI Fix..." : "AI Remediation Fix"}
@@ -135,7 +135,7 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
               <button
                 disabled={updating || finding.status === "RESOLVED"}
                 onClick={() => handleUpdateStatus("RESOLVED")}
-                className="px-3 py-1.5 rounded-lg bg-emerald-950/60 text-emerald-400 border border-emerald-800/60 hover:bg-emerald-900/60 text-xs font-semibold disabled:opacity-40 transition-all"
+                className="px-3.5 py-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 text-xs font-bold disabled:opacity-40 transition-all"
               >
                 Mark Resolved
               </button>
@@ -144,37 +144,37 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
 
           {/* AI Remediation Panel if active */}
           {aiData && (
-            <div className="p-5 rounded-xl bg-indigo-950/40 border border-indigo-800/60 space-y-4">
+            <div className="p-6 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-4 shadow-inner">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-indigo-300 font-bold text-sm">
                   <Sparkles className="w-4 h-4 text-indigo-400" />
                   <span>AI Patch Proposal & 9-Step AST Validation</span>
                 </div>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-indigo-900/80 text-indigo-200">
+                <span className="text-[10px] font-mono-code font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-200">
                   {aiData.provider}
                 </span>
               </div>
 
-              <div className="text-xs text-gray-300 space-y-1">
-                <p><span className="font-semibold text-gray-400">Explanation:</span> {aiData.explanation}</p>
-                <p><span className="font-semibold text-gray-400">Suggested Fix:</span> {aiData.suggested_fix}</p>
+              <div className="text-xs text-slate-300 space-y-1.5">
+                <p><span className="font-bold text-slate-400">Explanation:</span> {aiData.explanation}</p>
+                <p><span className="font-bold text-slate-400">Suggested Fix:</span> {aiData.suggested_fix}</p>
               </div>
 
               {aiData.validation_report?.is_valid ? (
-                <div className="p-3 rounded-lg bg-emerald-950/60 border border-emerald-800/60 text-emerald-400 text-xs font-semibold flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold flex items-center gap-2">
                   <CheckCheck className="w-4 h-4" />
                   <span>Validated by LeakGuard AST Engine (Target leak cleared, 0 new leaks introduced)</span>
                 </div>
               ) : (
-                <div className="p-3 rounded-lg bg-red-950/60 border border-red-800/60 text-red-400 text-xs font-semibold">
+                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-bold">
                   Validation Failed: {aiData.validation_report?.failure_reason}
                 </div>
               )}
 
               {aiData.validation_report?.unified_diff && (
                 <div>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Unified Diff Preview</span>
-                  <pre className="p-3 rounded-lg bg-gray-950 border border-gray-800 font-mono text-xs text-emerald-400 overflow-x-auto">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Unified Diff Preview</span>
+                  <pre className="p-4 rounded-xl bg-[#060911] border border-white/[0.06] font-mono-code text-xs text-emerald-400 overflow-x-auto">
                     {aiData.validation_report.unified_diff}
                   </pre>
                 </div>
@@ -185,7 +185,7 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
                   <button
                     disabled={updating}
                     onClick={handleApplyPatch}
-                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-md shadow-emerald-600/30 transition-all flex items-center gap-1.5"
+                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-600/25 transition-all flex items-center gap-2"
                   >
                     <CheckCircle className="w-4 h-4" />
                     Apply Verified AI Patch (Human Approval)
@@ -200,59 +200,59 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
           )}
 
           {/* Grid Layout for Required Sections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* WHAT & WHY */}
-            <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div>
-                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider block">WHAT</span>
-                <p className="text-gray-200 font-medium mt-1">{finding.title}</p>
+                <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">WHAT</span>
+                <p className="text-slate-100 font-bold text-sm mt-1">{finding.title}</p>
               </div>
 
               <div>
-                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider block">WHY</span>
-                <p className="text-gray-300 text-xs mt-1 leading-relaxed">
+                <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">WHY</span>
+                <p className="text-slate-300 text-xs mt-1 leading-relaxed">
                   The static analyzer identified an unclosed resource handle acquired along control-flow branches without a matching release call or context manager exit.
                 </p>
               </div>
             </div>
 
             {/* WHERE & PATH */}
-            <div className="p-4 rounded-xl bg-gray-900/40 border border-gray-800/80 space-y-3">
+            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
               <div>
-                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider block">WHERE / PATH</span>
-                <div className="mt-1 font-mono text-xs text-emerald-400 bg-gray-950 p-2.5 rounded-lg border border-gray-800 flex items-center gap-2">
+                <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">WHERE / PATH</span>
+                <div className="mt-1 font-mono-code text-xs text-emerald-400 bg-[#060911] p-3 rounded-xl border border-white/[0.06] flex items-center gap-2">
                   <Code className="w-4 h-4 text-emerald-500" />
                   <span>{finding.file_path}:{finding.line_number}</span>
                 </div>
               </div>
 
               <div>
-                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider block">RESOURCE & OWNERSHIP</span>
-                <div className="mt-1 space-y-1 text-xs text-gray-300">
-                  <p><span className="text-gray-400 font-semibold">Resource Type:</span> {resourceType}</p>
-                  <p><span className="text-gray-400 font-semibold">Ownership State:</span> {ownership}</p>
+                <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-wider block">RESOURCE & OWNERSHIP</span>
+                <div className="mt-1 space-y-1 text-xs text-slate-300">
+                  <p><span className="text-slate-400 font-bold">Resource Type:</span> {resourceType}</p>
+                  <p><span className="text-slate-400 font-bold">Ownership State:</span> {ownership}</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* REMEDIATION */}
-          <div className="p-4 rounded-xl bg-gray-900/60 border border-indigo-900/40 space-y-2">
-            <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider block">REMEDIATION GUIDANCE</span>
-            <p className="text-xs text-gray-300 leading-relaxed">{remediation}</p>
-            <div className="bg-gray-950 p-3 rounded-lg border border-gray-800 text-xs font-mono text-gray-300 mt-2">
-              <span className="text-gray-400"># Recommended Fix Pattern</span>
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+            <span className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider block">REMEDIATION GUIDANCE</span>
+            <p className="text-xs text-slate-300 leading-relaxed">{remediation}</p>
+            <div className="bg-[#060911] p-4 rounded-xl border border-white/[0.06] text-xs font-mono-code text-slate-300 mt-2">
+              <span className="text-slate-500"># Recommended Fix Pattern</span>
               <p className="text-emerald-400 mt-1">with open("{finding.file_path.split("/").pop() || "resource"}", "r") as handle:</p>
-              <p className="text-gray-400 pl-4"># Safely perform resource operations</p>
+              <p className="text-slate-500 pl-4"># Safely perform resource operations</p>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-800 bg-[#11192e] flex justify-end">
+        <div className="px-8 py-4 border-t border-white/[0.08] bg-[#080d18]/80 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-xs font-semibold text-gray-200 transition-colors"
+            className="px-5 py-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-xs font-bold text-slate-200 transition-colors"
           >
             Close Inspector
           </button>

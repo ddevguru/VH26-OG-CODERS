@@ -8,7 +8,7 @@ class SaaSConfig(BaseModel):
     db_url: str = Field(
         default_factory=lambda: os.getenv(
             "LEAKGUARD_DATABASE_URL",
-            os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/leakguard_db"),
+            os.getenv("DATABASE_URL", "postgresql://postgres:Deepak2003@localhost:5432/leakguard_db"),
         )
     )
     secret_key: str = Field(

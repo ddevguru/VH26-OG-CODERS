@@ -29,8 +29,13 @@ export default function FindingsPage() {
       });
       setFindings(res.items || []);
       setTotal(res.total || 0);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      if (e.message?.includes("401") || e.message?.includes("Unauthorized")) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("leakguard_token");
+          window.location.href = "/login";
+        }
+      }
     } finally {
       setLoading(false);
     }

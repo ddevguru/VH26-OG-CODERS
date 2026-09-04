@@ -209,6 +209,26 @@ class ApiClient {
     return data;
   }
 
+  async signup(email: string, password: string, fullName?: string, orgName?: string) {
+    const data = await this.request<{
+      access_token: string;
+      organization_id: string;
+      role: string;
+      user_id: string;
+    }>("/auth/signup", {
+      method: "POST",
+      body: JSON.stringify({ email, password, full_name: fullName, organization_name: orgName }),
+    });
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("leakguard_token", data.access_token);
+      localStorage.setItem("leakguard_org_id", data.organization_id);
+      localStorage.setItem("leakguard_role", data.role);
+      localStorage.setItem("leakguard_email", email);
+    }
+    return data;
+  }
+
   async getMe(): Promise<UserProfile> {
     return this.request<UserProfile>("/auth/me");
   }
@@ -315,6 +335,19 @@ class ApiClient {
 
   async getTeams(): Promise<any[]> {
     return this.request<any[]>("/organizations/teams");
+  }
+
+  // Admin APIs
+  async getAdminStats(): Promise<any> {
+    return this.request<any>("/organizations/admin/stats");
+  }
+
+  async getAdminUsers(limit = 20, offset = 0): Promise<PaginatedResponse<any>> {
+    return this.request<PaginatedResponse<any>>(`/organizations/admin/users?limit=${limit}&offset=${offset}`);
+  }
+
+  async getAdminScans(limit = 20, offset = 0): Promise<PaginatedResponse<any>> {
+    return this.request<PaginatedResponse<any>>(`/scans?limit=${limit}&offset=${offset}`);
   }
 }
 

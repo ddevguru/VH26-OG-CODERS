@@ -1,3 +1,3 @@
 def read_data():
-    f = open("data.txt")
-    return f.read()
+    with open("data.txt") as f:
+        return f.read()

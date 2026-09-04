@@ -18,25 +18,29 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   trend,
   trendType = "neutral",
 }) => {
-  let trendColor = "text-gray-400";
-  if (trendType === "positive") trendColor = "text-emerald-400";
-  if (trendType === "negative") trendColor = "text-red-400";
+  let trendColor = "text-slate-400 bg-slate-500/10 border-slate-500/20";
+  if (trendType === "positive") trendColor = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+  if (trendType === "negative") trendColor = "text-rose-400 bg-rose-500/10 border-rose-500/20";
 
   return (
-    <div className="glass-card p-5 rounded-xl flex flex-col justify-between border border-gray-800/80 hover:border-gray-700/80 transition-all">
+    <div className="glass-card p-6 rounded-2xl flex flex-col justify-between group hover:-translate-y-0.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{title}</span>
-        <div className="p-2 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20">
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{title}</span>
+        <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform duration-200 shadow-[0_0_15px_rgba(99,102,241,0.15)]">
           <Icon className="w-5 h-5" />
         </div>
       </div>
 
-      <div className="mt-3">
-        <div className="text-3xl font-extrabold text-white tracking-tight">{value}</div>
+      <div className="mt-4">
+        <div className="text-3xl font-extrabold text-white tracking-tight font-mono-code">{value}</div>
         {(subtitle || trend) && (
-          <div className="mt-1 flex items-center gap-2 text-xs">
-            {trend && <span className={`font-semibold ${trendColor}`}>{trend}</span>}
-            {subtitle && <span className="text-gray-400">{subtitle}</span>}
+          <div className="mt-2 flex items-center gap-2 text-xs">
+            {trend && (
+              <span className={`px-2 py-0.5 rounded-full font-bold border text-[11px] ${trendColor}`}>
+                {trend}
+              </span>
+            )}
+            {subtitle && <span className="text-slate-400 font-medium">{subtitle}</span>}
           </div>
         )}
       </div>

@@ -738,6 +738,121 @@ def watch(
 
 
 @app.command()
+def review(
+    target: Path = typer.Argument(Path("."), help="Directory or file path to review"),
+    commit: Optional[str] = typer.Option(None, "--commit", help="Commit SHA to review"),
+    pr: Optional[str] = typer.Option(None, "--pr", help="Pull Request number to review"),
+    mode: str = typer.Option("detailed", "--mode", "-m", help="Review mode: concise | detailed | security | senior-engineer | developer-friendly"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON review"),
+    no_color: bool = typer.Option(False, "--no-color", help="Disable terminal colors"),
+) -> None:
+    """Executes AI-powered Resource Security Code Review on code, PRs, or commits."""
+    from interfaces.cli.review import run_review_cmd
+    run_review_cmd(target_path=target, commit=commit, pr=pr, mode=mode, json_mode=json, no_color=no_color)
+
+
+@app.command()
+def explain(
+    finding_id: str = typer.Option(..., "--finding", "-f", help="Finding ID to explain"),
+    file: Optional[Path] = typer.Option(None, "--file", help="Python source file path"),
+) -> None:
+    """Explains root cause and security risks for a specific finding."""
+    from interfaces.cli.review import run_explain_cmd
+    run_explain_cmd(finding_id=finding_id, file_path=file)
+
+
+@app.command()
+def fix(
+    file: Path = typer.Option(..., "--file", help="Target Python source file"),
+    finding: str = typer.Option("LEAK_001", "--finding", "-f", help="Finding ID to fix"),
+    strategy: str = typer.Option("context-manager", "--strategy", help="Strategy: context-manager | try-finally | close-insertion | exception-safe | async-cleanup"),
+    verify: bool = typer.Option(True, "--verify/--no-verify", help="Execute isolated deterministic verification"),
+) -> None:
+    """Generates candidate AI fix and executes authoritative isolated deterministic verification."""
+    from interfaces.cli.review import run_fix_cmd
+    run_fix_cmd(target_file=file, finding_id=finding)
+
+
+@app.command()
+def verify(
+    patch: Path = typer.Option(..., "--patch", "-p", help="Patch file to verify against deterministic analyzer"),
+) -> None:
+    """Verifies a candidate patch against LeakGuard static analysis rules."""
+    from interfaces.cli.review import run_verify_cmd
+    run_verify_cmd(patch_file=patch)
+
+
+@app.command()
+def ownership(
+    target: Path = typer.Argument(Path("."), help="Directory or file path to analyze"),
+    finding: Optional[str] = typer.Option(None, "--finding", "-f", help="Finding ID to inspect"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON ownership graph"),
+    no_color: bool = typer.Option(False, "--no-color", help="Disable terminal colors"),
+) -> None:
+    """Displays the Resource Ownership Graph for a file or finding."""
+    from interfaces.cli.phase16_cli import run_ownership_cmd
+    run_ownership_cmd(target_path=target, finding_id=finding, json_mode=json, no_color=no_color)
+
+
+@app.command(name="what-if")
+def what_if(
+    file: Path = typer.Option(..., "--file", help="Target Python source file"),
+    line: int = typer.Option(..., "--line", "-l", help="Line number to simulate hypothetical exception at"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON what-if result"),
+) -> None:
+    """Executes static hypothetical execution analysis for an exception at a specified line."""
+    from interfaces.cli.phase16_cli import run_what_if_cmd
+    run_what_if_cmd(target_file=file, line_number=line, json_mode=json)
+
+
+@app.command()
+def risk(
+    target: Path = typer.Argument(Path("."), help="Directory or file path to analyze"),
+    finding: Optional[str] = typer.Option(None, "--finding", "-f", help="Finding ID to score"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON risk score"),
+) -> None:
+    """Computes deterministic 0-100 risk score for a finding or file."""
+    from interfaces.cli.phase16_cli import run_risk_cmd
+    run_risk_cmd(target_path=target, finding_id=finding, json_mode=json)
+
+
+@app.command()
+def firewall(
+    target: Path = typer.Argument(Path("."), help="Directory or file path to analyze"),
+    config: Optional[Path] = typer.Option(None, "--config", "-c", help="Path to custom .leakguard.yml config"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON firewall evaluation"),
+    strict: bool = typer.Option(False, "--strict", help="Strict mode (treat warnings as errors)"),
+) -> None:
+    """Evaluates developer firewall policy rules on target directory or file."""
+    from interfaces.cli.firewall_cli import run_firewall_cmd
+    run_firewall_cmd(target_path=target, config_file=config, json_mode=json, strict=strict)
+
+
+@app.command(name="pr-diff")
+def pr_diff(
+    before: Path = typer.Option(..., "--before", "-b", help="Base commit / before target path"),
+    after: Path = typer.Option(..., "--after", "-a", help="PR head / after target path"),
+    pr: Optional[str] = typer.Option("42", "--pr", help="Pull Request ID / Number"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON diff stream"),
+) -> None:
+    """Compares Before (base) vs After (head) findings and outputs PR Leak Diff."""
+    from interfaces.cli.firewall_cli import run_pr_diff_cmd
+    run_pr_diff_cmd(before_path=before, after_path=after, pr_number=pr, json_mode=json)
+
+
+@app.command(name="diff")
+def diff_alias(
+    before: Path = typer.Option(..., "--before", "-b", help="Base commit / before target path"),
+    after: Path = typer.Option(..., "--after", "-a", help="PR head / after target path"),
+    pr: Optional[str] = typer.Option("42", "--pr", help="Pull Request ID / Number"),
+    json: bool = typer.Option(False, "--json", help="Output machine-readable JSON diff stream"),
+) -> None:
+    """Alias for pr-diff. Compares Before vs After leak findings."""
+    from interfaces.cli.firewall_cli import run_pr_diff_cmd
+    run_pr_diff_cmd(before_path=before, after_path=after, pr_number=pr, json_mode=json)
+
+
+@app.command()
 def version() -> None:
     """Prints the version of LeakGuard."""
     console.print("[bold cyan]LeakGuard v0.1.0[/bold cyan] - Static Resource Lifetime Analysis for Python")

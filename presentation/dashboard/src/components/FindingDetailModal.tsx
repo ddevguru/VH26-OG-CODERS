@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, CheckCircle, AlertOctagon, Code, Sparkles, CheckCheck } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, CheckCircle, AlertOctagon, Code, Sparkles, CheckCheck, ShieldAlert, GitFork, Zap, Play } from "lucide-react";
 import { FindingItem, api } from "@/lib/api";
 import { StatusBadge } from "@/components/StatusBadge";
 
@@ -20,6 +20,22 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
   const [remediating, setRemediating] = useState(false);
   const [aiData, setAiData] = useState<any>(null);
   const [patchApplied, setPatchApplied] = useState(false);
+
+  // Phase 16 State
+  const [riskData, setRiskData] = useState<any>(null);
+  const [ownershipData, setOwnershipData] = useState<any>(null);
+  const [whatIfData, setWhatIfData] = useState<any>(null);
+  const [whatIfLoading, setWhatIfLoading] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState("context-manager");
+  const [fixData, setFixData] = useState<any>(null);
+  const [generatingFix, setGeneratingFix] = useState(false);
+
+  useEffect(() => {
+    if (!finding) return;
+    // Fetch Phase 16 Risk Score & Ownership Graph
+    api.getRiskScore(finding.id).then(setRiskData).catch(() => {});
+    api.getOwnershipGraph(finding.id).then(setOwnershipData).catch(() => {});
+  }, [finding]);
 
   if (!finding) return null;
 
@@ -44,6 +60,32 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
       alert(`AI Remediation Error: ${(e as Error).message}`);
     } finally {
       setRemediating(false);
+    }
+  };
+
+  const handleGenerateStrategyFix = async () => {
+    try {
+      setGeneratingFix(true);
+      const defaultCode = `def process():\n    f = open('${finding.file_path.split("/").pop() || "resource.txt"}')\n    return f.read()\n`;
+      const res = await api.generateAutoFix(finding.id, defaultCode, selectedStrategy);
+      setFixData(res);
+    } catch (e) {
+      alert(`Auto Fix Error: ${(e as Error).message}`);
+    } finally {
+      setGeneratingFix(false);
+    }
+  };
+
+  const handleRunWhatIf = async () => {
+    try {
+      setWhatIfLoading(true);
+      const sampleCode = `def execute():\n    conn = connect()\n    cursor = conn.cursor()\n    res = cursor.execute()\n    return res\n`;
+      const res = await api.runWhatIf(sampleCode, finding.line_number, finding.file_path);
+      setWhatIfData(res);
+    } catch (e) {
+      alert(`What-If Error: ${(e as Error).message}`);
+    } finally {
+      setWhatIfLoading(false);
     }
   };
 
@@ -80,7 +122,7 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="glass-card border border-white/[0.1] rounded-3xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      <div className="glass-card border border-white/[0.1] rounded-3xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="px-8 py-5 border-b border-white/[0.08] flex items-center justify-between bg-[#080d18]/80">
           <div className="flex items-center gap-3.5">
@@ -92,12 +134,23 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
               <p className="text-xs text-slate-400 font-mono-code">Rule: {finding.rule_id} • Fingerprint: {finding.fingerprint}</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/[0.06] transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+
+          <div className="flex items-center gap-3">
+            {riskData && (
+              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-extrabold text-emerald-300">
+                  Risk Score: {riskData.score}/100 ({riskData.level})
+                </span>
+              </div>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/[0.06] transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -140,6 +193,131 @@ export const FindingDetailModal: React.FC<FindingDetailModalProps> = ({
                 Mark Resolved
               </button>
             </div>
+          </div>
+
+          {/* Phase 16: Resource Ownership Graph & Deterministic Risk Score */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Deterministic Risk Factors */}
+            {riskData && (
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider block">DETERMINISTIC RISK SCORE FACTORS</span>
+                  <span className="text-xs font-mono-code font-bold text-emerald-400">{riskData.score} / 100</span>
+                </div>
+                <p className="text-slate-300 text-xs">{riskData.explanation}</p>
+                <div className="space-y-1.5 pt-1">
+                  {riskData.factors?.map((f: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-[#060911] border border-white/[0.04]">
+                      <span className="text-[11px] font-semibold text-slate-200">{f.name}</span>
+                      <span className="text-[11px] font-mono-code text-amber-400 font-bold">+{f.score_contribution.toFixed(1)} pts</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resource Ownership Graph Preview */}
+            {ownershipData && (
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                <div className="flex items-center gap-2">
+                  <GitFork className="w-4 h-4 text-cyan-400" />
+                  <span className="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider block">RESOURCE OWNERSHIP GRAPH</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase">Tracked Graph Nodes ({ownershipData.nodes?.length})</div>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    {ownershipData.nodes?.map((node: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-[#060911] border border-white/[0.04] text-[11px]">
+                        <div className="font-mono-code text-slate-200">
+                          <span className="font-bold text-indigo-400">{node.variable}</span> ({node.resource_type})
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${node.leak_status?.includes("LEAK") ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 text-emerald-300"}`}>
+                          {node.state} ({node.leak_status})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Phase 16: Interactive Strategy Pattern Auto Fixer */}
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/20 to-indigo-950/20 border border-emerald-500/20 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <span>Strategy Pattern Auto Fixer & Deterministic Verification</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <select
+                  value={selectedStrategy}
+                  onChange={(e) => setSelectedStrategy(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-[#060911] border border-slate-700 text-xs font-bold text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="context-manager">Context Manager ('with')</option>
+                  <option value="try-finally">Try-Finally Block</option>
+                  <option value="close-insertion">Explicit Close Insertion</option>
+                  <option value="exception-safe">Exception Safe Cleanup</option>
+                  <option value="async-cleanup">Async Context Manager</option>
+                </select>
+
+                <button
+                  disabled={generatingFix}
+                  onClick={handleGenerateStrategyFix}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  {generatingFix ? "Verifying Strategy..." : "Synthesize Strategy Fix"}
+                </button>
+              </div>
+            </div>
+
+            {fixData && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-300">Verification Status:</span>
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold ${fixData.is_verified ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" : "bg-rose-500/20 text-rose-400 border border-rose-500/30"}`}>
+                    {fixData.verification_status} ({fixData.is_verified ? "Target Leak Cleared, 0 New Leaks Introduced" : fixData.rejected_reason})
+                  </span>
+                </div>
+
+                {fixData.unified_diff && (
+                  <div>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Deterministic Verification Diff</span>
+                    <pre className="p-4 rounded-xl bg-[#060911] border border-white/[0.06] font-mono-code text-xs text-emerald-400 overflow-x-auto">
+                      {fixData.unified_diff || fixData.candidate_code}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Phase 16: What-If Static Exception Simulator */}
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertOctagon className="w-4 h-4 text-amber-400" />
+                <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider block">WHAT-IF STATIC EXCEPTION SIMULATOR</span>
+              </div>
+              <button
+                disabled={whatIfLoading}
+                onClick={handleRunWhatIf}
+                className="px-3 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 font-bold text-xs"
+              >
+                {whatIfLoading ? "Simulating..." : "Simulate Exception at Line"}
+              </button>
+            </div>
+
+            {whatIfData && (
+              <div className="space-y-2 pt-1 text-xs text-slate-300">
+                <p><span className="font-bold text-slate-400">Location:</span> {whatIfData.source_location} ({whatIfData.function_name})</p>
+                <p><span className="font-bold text-slate-400">Cleanup Guarantee:</span> <span className={whatIfData.cleanup_status === "GUARANTEED" ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{whatIfData.cleanup_status}</span></p>
+                <p><span className="font-bold text-slate-400">Explanation:</span> {whatIfData.explanation}</p>
+              </div>
+            )}
           </div>
 
           {/* AI Remediation Panel if active */}

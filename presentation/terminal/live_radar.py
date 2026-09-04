@@ -16,6 +16,16 @@ class LiveRadarRenderer:
     """Renders the LeakGuard Live Radar UI, compact resource tables, lifecycle visualization, transition banners, and machine-readable JSON."""
 
     def __init__(self, console: Optional[Console] = None, json_mode: bool = False, no_color: bool = False) -> None:
+        if hasattr(sys.stdout, "reconfigure"):
+            try:
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+        if hasattr(sys.stderr, "reconfigure"):
+            try:
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
         self.console = console or Console(no_color=no_color)
         self.json_mode = json_mode
         self.no_color = no_color

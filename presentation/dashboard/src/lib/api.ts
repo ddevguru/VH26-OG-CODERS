@@ -349,6 +349,60 @@ class ApiClient {
   async getAdminScans(limit = 20, offset = 0): Promise<PaginatedResponse<any>> {
     return this.request<PaginatedResponse<any>>(`/scans?limit=${limit}&offset=${offset}`);
   }
+
+  // Phase 16 APIs
+  async getOwnershipGraph(findingId: string): Promise<any> {
+    return this.request<any>(`/findings/${findingId}/ownership-graph`);
+  }
+
+  async getRiskScore(findingId: string): Promise<any> {
+    return this.request<any>(`/findings/${findingId}/risk-score`);
+  }
+
+  async runWhatIf(sourceCode: string, lineNumber: number, filePath = "app.py"): Promise<any> {
+    return this.request<any>("/analysis/what-if", {
+      method: "POST",
+      body: JSON.stringify({ source_code: sourceCode, line_number: lineNumber, file_path: filePath }),
+    });
+  }
+
+  async generateAutoFix(findingId: string, sourceCode: string, strategy = "context-manager"): Promise<any> {
+    return this.request<any>(`/findings/${findingId}/fix`, {
+      method: "POST",
+      body: JSON.stringify({ source_code: sourceCode, strategy }),
+    });
+  }
+
+  async verifyPatch(findingId: string, originalCode: string, candidateCode: string, fileName = "module.py"): Promise<any> {
+    return this.request<any>("/patches/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        original_code: originalCode,
+        candidate_code: candidateCode,
+        finding_id: findingId,
+        file_name: fileName,
+      }),
+    });
+  }
+
+  // Firewall & PR Diff APIs
+  async evaluateFirewall(diagnostics: any[], policyOverride?: Record<string, string>): Promise<any> {
+    return this.request<any>("/firewall/evaluate", {
+      method: "POST",
+      body: JSON.stringify({ diagnostics, policy_override: policyOverride }),
+    });
+  }
+
+  async comparePRDiff(beforeDiagnostics: any[], afterDiagnostics: any[], prNumber = "42"): Promise<any> {
+    return this.request<any>("/diff/compare", {
+      method: "POST",
+      body: JSON.stringify({
+        pr_number: prNumber,
+        before_diagnostics: beforeDiagnostics,
+        after_diagnostics: afterDiagnostics,
+      }),
+    });
+  }
 }
 
 export const api = new ApiClient();

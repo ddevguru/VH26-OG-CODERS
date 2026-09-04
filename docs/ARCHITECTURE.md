@@ -76,17 +76,50 @@ LeakGuard is a static analysis platform implemented in Python (3.11+) designed t
 - `core/rules`: Static analysis rule definitions.
 - `core/diagnostics`: Builder for structured diagnostic findings.
 - `core/reporting`: Console (Rich UI), JSON, and SARIF 2.1.0 output formatting.
+- `core/watch`: Live watch subsystem (`Watcher`, `EventDebouncer`, `WatchState`, `LiveRadarRenderer`).
 
-- `interfaces/cli`: Command-line interface built with `typer` (`leakguard scan <path>`).
+- `interfaces/cli`: Command-line interface built with `typer` (`leakguard scan <path>`, `leakguard watch <path>`).
 - `interfaces/ci`: GitHub Actions wrapper and SARIF exporter.
 - `interfaces/precommit`: Pre-commit hook implementation.
 - `interfaces/api`: Programmatic Python API client for embedding LeakGuard into tools/workflows.
 
 ---
 
+## Watch Subsystem (`leakguard watch`)
+
+The live watch subsystem provides incremental static analysis with zero customer code execution:
+
+```
+  FileSystem Event (File Modified/Created/Deleted)
+                   │
+                   ▼
+         [ FileWatcher Engine ]  (Watchdog API with Polling Fallback)
+                   │
+                   ▼
+        [ EventDebouncer Queue ]  (Coalesces edits within 300ms window)
+                   │
+                   ▼
+         [ Analysis Engine ]     (Performs incremental file scan & AST parse)
+                   │
+                   ├──> SyntaxError -> [ WatchState: Incomplete Syntax ]
+                   │
+                   └──> Valid AST -> [ WatchState: Update Findings & Diffs ]
+                                             │
+                                             ▼
+                                  [ LiveRadarRenderer UI ]
+                                (Displays Status, Radar & Lifecycle Diagrams)
+```
+
+1. **Safety & Zero Code Execution**: Pure AST/CFG parsing without importing or executing any code.
+2. **Debouncing**: `EventDebouncer` prevents duplicate analysis when IDEs issue multiple file write operations within milliseconds.
+3. **Syntax Error Resilience**: Captures `SyntaxError` cleanly, indicating `Syntax Incomplete` in the terminal UI without interrupting the watch thread.
+4. **Stable Finding Identity**: Tracks findings across file edits using deterministic identity keys (`file::func::res_var::line::rule`).
+
+---
+
 ## Verification & Quality Assurance
 
-- **Unit & Integration Tests**: `pytest` suite testing parser, AST collector, CFG builder, dataflow analyzer, and regression examples.
+- **Unit & Integration Tests**: `pytest` suite testing parser, AST collector, CFG builder, dataflow analyzer, watcher subsystem, and regression examples.
 - **Coverage**: Configured with `pytest-cov`.
 - **Linting & Formatting**: Configured with `ruff`.
 - **Type Checking**: Configured with `mypy`.

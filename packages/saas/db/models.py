@@ -261,7 +261,55 @@ class AuditEvent(Base):
     organization = relationship("Organization", back_populates="audit_events")
 
 
+class AIReview(Base):
+    __tablename__ = "ai_reviews"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    scan_id = Column(String(36), ForeignKey("scans.id"), nullable=True, index=True)
+    target = Column(String(255), nullable=False, default="project")
+    review_mode = Column(String(50), default="detailed")
+    overall_status = Column(String(50), default="PASSED")
+    summary = Column(Text, nullable=True)
+    details_json = Column(Text, nullable=True)
+    trace_id = Column(String(100), nullable=True, index=True)
+    created_at = Column(DateTime, default=utc_now)
+
+
+class AIAgentActivity(Base):
+    __tablename__ = "ai_agent_activities"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    scan_id = Column(String(36), ForeignKey("scans.id"), nullable=True, index=True)
+    trace_id = Column(String(100), nullable=True, index=True)
+    agent_name = Column(String(100), nullable=False, index=True)
+    status = Column(String(50), nullable=False)
+    duration_ms = Column(Float, default=0.0)
+    details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+
+class AIFixVerification(Base):
+    __tablename__ = "ai_fix_verifications"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    finding_id = Column(String(36), nullable=False, index=True)
+    status = Column(String(50), nullable=False)  # VERIFIED_FIX / REJECTED
+    is_verified = Column(Boolean, default=False)
+    candidate_patch = Column(Text, nullable=True)
+    unified_diff = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+
 # Performance and isolation indexes
 Index("idx_findings_org_status", Finding.org_id, Finding.status)
 Index("idx_scans_org_repo", Scan.org_id, Scan.repo_id)
 Index("idx_audit_org_created", AuditEvent.org_id, AuditEvent.created_at)
+Index("idx_ai_activity_org_user", AIAgentActivity.org_id, AIAgentActivity.user_id)
+

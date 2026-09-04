@@ -19,6 +19,9 @@ from packages.saas.routers import (
     integrations,
     audit_log,
     admin,
+    ai_review,
+    phase16,
+    firewall_diff,
 )
 
 
@@ -121,6 +124,9 @@ def create_app() -> FastAPI:
     app.include_router(integrations.router, prefix=api_prefix)
     app.include_router(audit_log.router, prefix=api_prefix)
     app.include_router(admin.router, prefix=api_prefix)
+    app.include_router(ai_review.router)
+    app.include_router(phase16.router)
+    app.include_router(firewall_diff.router)
 
     @app.get("/health", tags=["Health"])
     def health_check():

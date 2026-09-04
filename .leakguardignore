@@ -1,0 +1,6 @@
+# LeakGuard ignore patterns
+**/tests/**
+**/test_*.py
+**/examples/**
+**/scratch/**
+app.py

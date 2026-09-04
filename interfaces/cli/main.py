@@ -55,7 +55,7 @@ def scan(
         min_sev = severity or Severity.INFO
         min_conf = confidence or Confidence.LOW
 
-        default_excludes = ["**/venv/**", "**/.venv/**", "**/__pycache__/**", "**/build/**", "**/dist/**", "**/.git/**", "**/.pytest_cache/**"]
+        default_excludes = ["**/venv/**", "**/.venv/**", "**/__pycache__/**", "**/build/**", "**/dist/**", "**/.git/**", "**/.pytest_cache/**", "**/tests/**", "**/test_*.py"]
         combined_excludes = default_excludes + (exclude if exclude else [])
 
         config = LeakGuardConfig(
@@ -284,7 +284,9 @@ CREDENTIALS_FILE = Path.home() / ".leakguard" / "credentials.json"
 def get_credentials() -> Optional[dict]:
     if CREDENTIALS_FILE.exists():
         try:
-            return json.loads(CREDENTIALS_FILE.read_text(encoding="utf-8"))
+            data = json.loads(CREDENTIALS_FILE.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
         except Exception:
             return None
     return None

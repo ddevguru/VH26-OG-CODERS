@@ -1,24 +1,42 @@
-name: 'LeakGuard Resource Leak Scanner'
-description: 'AST-Based Static Resource Leak Detection for Java in CI/CD'
+name: 'LeakGuard Resource Lifetime Scanner'
+description: 'AST and Control-Flow Based Static Resource Lifetime Analysis for Python in CI/CD'
+author: 'LeakGuard Team'
+
 inputs:
-  path:
-    description: 'Path to Java repository directory or source file'
+  target:
+    description: 'Path to repository directory or single Python source file'
     required: false
     default: '.'
-  threshold:
-    description: 'Minimum severity threshold to trigger failure (info, warning, error, critical)'
+  severity:
+    description: 'Minimum severity threshold filter (info, warning, error, critical)'
+    required: false
+    default: 'info'
+  confidence:
+    description: 'Minimum confidence threshold filter (low, medium, high)'
+    required: false
+    default: 'low'
+  fail_on:
+    description: 'CI failure blocking threshold (error, warning, critical, info, none)'
     required: false
     default: 'error'
-  output_format:
-    description: 'Output format (cli, json, sarif)'
+  changed_only:
+    description: 'Scan only git changed files in pull request'
+    required: false
+    default: 'false'
+  baseline:
+    description: 'Path to baseline JSON file for suppressing known issues'
+    required: false
+    default: ''
+  format:
+    description: 'Report output format (text, json, sarif)'
     required: false
     default: 'sarif'
   sarif_file:
-    description: 'File path to write SARIF output report'
+    description: 'File path to save SARIF output report'
     required: false
     default: 'leakguard-results.sarif'
-  fail_on_leak:
-    description: 'Exit with non-zero code if threshold is violated'
+  upload_sarif:
+    description: 'Upload SARIF results to GitHub Code Security tab'
     required: false
     default: 'true'
 
@@ -33,14 +51,26 @@ runs:
     - name: Install LeakGuard
       shell: bash
       run: |
-        pip install tree-sitter tree-sitter-java rich typer pydantic
+        python -m pip install --upgrade pip
         pip install -e .
 
     - name: Run LeakGuard Analysis
       shell: bash
       run: |
-        leakguard scan "${{ inputs.path }}" \
-          --threshold "${{ inputs.threshold }}" \
-          --format "${{ inputs.output_format }}" \
-          --out "${{ inputs.sarif_file }}" \
-          --fail-on-leak="${{ inputs.fail_on_leak }}"
+        ARGS="--format ${{ inputs.format }} --fail-on ${{ inputs.fail_on }} --severity ${{ inputs.severity }} --confidence ${{ inputs.confidence }}"
+        if [ -n "${{ inputs.sarif_file }}" ]; then
+          ARGS="$ARGS --out ${{ inputs.sarif_file }}"
+        fi
+        if [ "${{ inputs.changed_only }}" = "true" ]; then
+          ARGS="$ARGS --changed-only"
+        fi
+        if [ -n "${{ inputs.baseline }}" ]; then
+          ARGS="$ARGS --baseline ${{ inputs.baseline }}"
+        fi
+        leakguard scan "${{ inputs.target }}" $ARGS
+
+    - name: Upload SARIF report to GitHub Code Security
+      if: inputs.upload_sarif == 'true' && inputs.format == 'sarif' && always()
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif_file }}

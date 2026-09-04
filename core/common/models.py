@@ -155,7 +155,17 @@ class Finding(BaseModel):
 class Policy(BaseModel):
     fail_on_severity: Severity = Severity.ERROR
     fail_on_confidence: Confidence = Confidence.MEDIUM
+    fail_on: str = "error"
+    confidence_threshold: float = 0.85
     max_allowed_leaks: int = 0
+
+
+class PolicyEvaluationResult(BaseModel):
+    passed: bool = True
+    blocking_findings: List[Diagnostic] = Field(default_factory=list)
+    suppressed_findings: List[Diagnostic] = Field(default_factory=list)
+    reasons: List[str] = Field(default_factory=list)
+
 
 
 class ScanStatistics(BaseModel):

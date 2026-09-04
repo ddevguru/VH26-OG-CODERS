@@ -1,0 +1,7 @@
+policy:
+  fail_on: error
+  confidence_threshold: 0.85
+
+exclude_patterns:
+  - "**/venv/**"
+  - "**/.git/**"

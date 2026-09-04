@@ -1,0 +1,32 @@
+name: LeakGuard Resource Lifetime Scan
+
+on:
+  push:
+    branches: [ main, master, doctron ]
+  pull_request:
+    branches: [ main, master, doctron ]
+
+jobs:
+  leakguard-scan:
+    name: LeakGuard Static Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run LeakGuard Scanner
+        uses: ./integrations/github_action
+        with:
+          target: '.'
+          fail_on: 'error'
+          severity: 'info'
+          confidence: 'low'
+          format: 'sarif'
+          sarif_file: 'leakguard-results.sarif'
+          upload_sarif: 'true'

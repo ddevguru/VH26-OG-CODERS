@@ -1,0 +1,25 @@
+pipeline {
+    agent {
+        docker {
+            image 'python:3.12-slim'
+        }
+    }
+    stages {
+        stage('Install LeakGuard') {
+            steps {
+                sh 'pip install --upgrade pip'
+                sh 'pip install -e .'
+            }
+        }
+        stage('LeakGuard Resource Scan') {
+            steps {
+                sh 'leakguard scan . --format sarif --out leakguard-results.sarif --fail-on error'
+            }
+        }
+    }
+    post {
+        always {
+            archiveArtifacts artifacts: 'leakguard-results.sarif', allowEmptyArchive: true
+        }
+    }
+}

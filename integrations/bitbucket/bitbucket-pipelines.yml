@@ -1,0 +1,14 @@
+image: python:3.12-slim
+
+pipelines:
+  default:
+    - step:
+        name: LeakGuard Resource Scan
+        caches:
+          - pip
+        script:
+          - pip install --upgrade pip
+          - pip install -e .
+          - python -m interfaces.ci.bitbucket .
+        artifacts:
+          - leakguard-bitbucket.json

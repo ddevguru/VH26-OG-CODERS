@@ -1,0 +1,16 @@
+stages:
+  - test
+
+leakguard_scan:
+  stage: test
+  image: python:3.12-slim
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -e .
+  script:
+    - leakguard scan . --format json --out gl-code-quality-report.json --fail-on error
+  artifacts:
+    name: "leakguard-code-quality-$CI_COMMIT_REF_SLUG"
+    when: always
+    reports:
+      codequality: gl-code-quality-report.json

@@ -9,13 +9,18 @@ Base = declarative_base()
 
 
 def get_engine(db_url: str | None = None):
-    url = db_url or settings.db_url 
+    url = db_url or settings.db_url
     if url.startswith("sqlite"):
         return create_engine(
             url,
             connect_args={"check_same_thread": False},
             poolclass=StaticPool if ":memory:" in url else None,
         )
+
+    # Use pg8000 driver for PostgreSQL if plain postgresql:// is provided
+    if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        url = url.replace("postgresql://", "postgresql+pg8000://", 1)
+
     return create_engine(url, pool_pre_ping=True)
 
 

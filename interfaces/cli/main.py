@@ -401,13 +401,14 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_FILE=".leakguard/reports/scan_${TIMESTAMP}.log"
 LATEST_JSON=".leakguard/reports/latest_scan.json"
 
-python -m leakguard scan . --format json --out "$LATEST_JSON" | tee "$REPORT_FILE"
+python -m leakguard scan . --format json --out "$LATEST_JSON" > "$REPORT_FILE" 2>&1
 SCAN_EXIT_CODE=$?
+cat "$REPORT_FILE"
 
 if [ $SCAN_EXIT_CODE -ne 0 ]; then
     echo ""
     echo "--------------------------------------------------------"
-    echo " [X] LeakGuard Pre-Push Check FAILED!"
+    echo " [X] LeakGuard Pre-Push Check FAILED! PUSH ABORTED."
     echo " Resource leak findings detected in codebase."
     echo " Scan log saved to: $REPORT_FILE"
     echo " Fix resource leaks before pushing or run: python -m leakguard fix ."

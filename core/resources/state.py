@@ -2,13 +2,15 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Dict, Set, Optional
 from core.common.models import ResourceState, Span, ResourceSymbol
+from core.resources.semantics import ResourceOwnership
 
 
 @dataclass
 class AbstractStore:
-    """Abstract Store tracking symbol bindings and resource states along CFG paths."""
+    """Abstract Store tracking symbol bindings, resource states, ownership, transfers, and aliases along CFG paths."""
     symbol_to_id: Dict[str, str] = field(default_factory=dict)
     id_to_state: Dict[str, ResourceState] = field(default_factory=dict)
+    id_to_ownership: Dict[str, ResourceOwnership] = field(default_factory=dict)
     id_to_symbol: Dict[str, ResourceSymbol] = field(default_factory=dict)
     aliases: Dict[str, Set[str]] = field(default_factory=dict)  # ResID -> Set of variable names
 
@@ -16,14 +18,16 @@ class AbstractStore:
         return AbstractStore(
             symbol_to_id=deepcopy(self.symbol_to_id),
             id_to_state=deepcopy(self.id_to_state),
+            id_to_ownership=deepcopy(self.id_to_ownership),
             id_to_symbol=deepcopy(self.id_to_symbol),
             aliases=deepcopy(self.aliases),
         )
 
-    def register_resource(self, var_name: str, symbol: ResourceSymbol) -> None:
+    def register_resource(self, var_name: str, symbol: ResourceSymbol, initial_ownership: ResourceOwnership = ResourceOwnership.OWNED) -> None:
         res_id = symbol.id
         self.symbol_to_id[var_name] = res_id
         self.id_to_state[res_id] = ResourceState.OPEN_MUST_CLOSE
+        self.id_to_ownership[res_id] = initial_ownership
         self.id_to_symbol[res_id] = symbol
         if res_id not in self.aliases:
             self.aliases[res_id] = set()
@@ -33,6 +37,11 @@ class AbstractStore:
         res_id = self.symbol_to_id.get(var_name_or_id, var_name_or_id)
         if res_id in self.id_to_state:
             self.id_to_state[res_id] = new_state
+            released_symbol = self.id_to_symbol.get(res_id)
+            if released_symbol:
+                for other_id, other_symbol in self.id_to_symbol.items():
+                    if other_id != res_id and other_symbol.acquisition_span == released_symbol.acquisition_span:
+                        self.id_to_state[other_id] = new_state
             return True
         return False
 
@@ -40,15 +49,45 @@ class AbstractStore:
         res_id = self.symbol_to_id.get(var_name_or_id, var_name_or_id)
         return self.id_to_state.get(res_id, ResourceState.UNACQUIRED)
 
+    def get_ownership(self, var_name_or_id: str) -> ResourceOwnership:
+        res_id = self.symbol_to_id.get(var_name_or_id, var_name_or_id)
+        return self.id_to_ownership.get(res_id, ResourceOwnership.UNKNOWN)
+
     def add_alias(self, alias_var: str, original_var: str) -> None:
         res_id = self.symbol_to_id.get(original_var)
         if res_id:
             self.symbol_to_id[alias_var] = res_id
             self.aliases[res_id].add(alias_var)
 
+    def transfer_resource(self, var_name: str, destination: str) -> bool:
+        res_id = self.symbol_to_id.get(var_name)
+        if res_id and res_id in self.id_to_state:
+            self.id_to_state[res_id] = ResourceState.TRANSFERRED
+            self.id_to_ownership[res_id] = ResourceOwnership.TRANSFERRED
+            return True
+        return False
+
+    def escape_resource(self, var_name: str, reason: str = "ESCAPED_SCOPE") -> bool:
+        res_id = self.symbol_to_id.get(var_name)
+        if res_id and res_id in self.id_to_state:
+            self.id_to_state[res_id] = ResourceState.ESCAPED
+            self.id_to_ownership[res_id] = ResourceOwnership.ESCAPED
+            return True
+        return False
+
+    def context_enter(self, var_name: str, symbol: ResourceSymbol) -> None:
+        self.register_resource(var_name, symbol, initial_ownership=ResourceOwnership.OWNED)
+
+    def context_exit(self, var_name: str) -> None:
+        self.set_state(var_name, ResourceState.CLOSED)
+
     @staticmethod
     def join_states(s1: ResourceState, s2: ResourceState) -> ResourceState:
         if s1 == s2:
+            return s1
+        if s1 == ResourceState.UNACQUIRED:
+            return s2
+        if s2 == ResourceState.UNACQUIRED:
             return s1
         if s1 == ResourceState.UNKNOWN or s2 == ResourceState.UNKNOWN:
             return ResourceState.UNKNOWN
@@ -72,5 +111,20 @@ class AbstractStore:
 
             if res_id not in merged.id_to_symbol and res_id in other.id_to_symbol:
                 merged.id_to_symbol[res_id] = other.id_to_symbol[res_id]
+            elif res_id in merged.id_to_symbol and res_id in other.id_to_symbol:
+                if other.id_to_symbol[res_id].is_try_with_resources:
+                    merged.id_to_symbol[res_id].is_try_with_resources = True
+            if res_id not in merged.id_to_ownership and res_id in other.id_to_ownership:
+                merged.id_to_ownership[res_id] = other.id_to_ownership[res_id]
+
+        for var, rid in other.symbol_to_id.items():
+            if var not in merged.symbol_to_id:
+                merged.symbol_to_id[var] = rid
+
+        for rid, var_set in other.aliases.items():
+            if rid not in merged.aliases:
+                merged.aliases[rid] = set(var_set)
+            else:
+                merged.aliases[rid].update(var_set)
 
         return merged

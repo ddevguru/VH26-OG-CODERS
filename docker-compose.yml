@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  leakguard-cli:
+    build: .
+    volumes:
+      - .:/code
+    working_dir: /code
+    command: scan ./examples/vulnerable --threshold high --format sarif --out leakguard-results.sarif

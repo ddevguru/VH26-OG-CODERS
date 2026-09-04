@@ -30,6 +30,9 @@ class PythonAstParser:
         content = path.read_text(encoding="utf-8", errors="replace")
         return self.parse_string(content, filename=str(path))
 
+    def parse_code(self, source_code: str, filename: str = "<stdin>") -> ast.AST:
+        return self.parse_string(source_code, filename=filename)
+
     def _verify_depth(self, node: ast.AST, depth: int) -> None:
         if depth > self.MAX_AST_DEPTH:
             raise ParserSecurityError(f"AST recursion depth limit ({self.MAX_AST_DEPTH}) exceeded.")

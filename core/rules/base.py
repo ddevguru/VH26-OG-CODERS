@@ -1,5 +1,5 @@
 import ast
-from typing import List, Union
+from typing import List, Union, Tuple
 from pathlib import Path
 
 from core.parser.ast_parser import PythonAstParser
@@ -28,10 +28,16 @@ class ResourceLeakRule(BaseRule):
         self.dataflow_analyzer = DataflowAnalyzer()
 
     def analyze_tree(self, tree: ast.AST, file_path: str) -> List[Diagnostic]:
-        diagnostics: List[Diagnostic] = []
+        diags, _, _ = self.analyze_tree_with_stats(tree, file_path)
+        return diags
 
+    def analyze_tree_with_stats(self, tree: ast.AST, file_path: str) -> Tuple[List[Diagnostic], int, int]:
+        diagnostics: List[Diagnostic] = []
         collector = AstFunctionCollector()
         collector.visit(tree)
+
+        functions_count = len(collector.functions)
+        resources_count = 0
 
         for func_node, scope in collector.functions:
             if func_node.body:  # type: ignore
@@ -39,4 +45,15 @@ class ResourceLeakRule(BaseRule):
                 diags = self.dataflow_analyzer.analyze_cfg(cfg, file_path)
                 diagnostics.extend(diags)
 
-        return diagnostics
+                # Count resources in function
+                if hasattr(self.dataflow_analyzer, '_last_out_stores'):
+                    pass
+                for block in cfg.blocks:
+                    for stmt in block.statements:
+                        if isinstance(stmt, ast.Assign):
+                            is_acq, _ = self.dataflow_analyzer.catalog.is_acquisition_expr(stmt.value)
+                            if is_acq:
+                                resources_count += 1
+
+        return diagnostics, functions_count, resources_count
+

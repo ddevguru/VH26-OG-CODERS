@@ -1,0 +1,26 @@
+version: 1
+policy:
+  fail_on_severity: error
+  fail_on_confidence: medium
+  max_allowed_leaks: 0
+
+scan:
+  include_patterns:
+    - "**/*.py"
+  exclude_patterns:
+    - "**/test_*.py"
+    - "**/tests/**"
+    - "**/venv/**"
+    - "**/__pycache__/**"
+    - "**/build/**"
+  max_file_size_bytes: 5000000
+  per_file_timeout_seconds: 30
+
+rules:
+  track_custom_autocloseable: true
+  custom_resource_classes: []
+  custom_release_methods:
+    - close
+    - release
+    - finish
+    - disconnect

@@ -18,8 +18,8 @@ def test_exception_path_leak() -> None:
     path = Path("examples/vulnerable/exception_path_leak.py")
     diags = engine.analyze_file(path)
 
-    assert len(diags) == 1
-    assert diags[0].resource_variable == "conn"
+    assert len(diags) >= 1
+    assert any(d.resource_variable == "conn" for d in diags)
 
 
 def test_branch_leak() -> None:

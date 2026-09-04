@@ -30,6 +30,7 @@ class DataflowAnalyzer:
     def analyze_cfg(self, cfg: CFG, file_path: str = "<stdin>") -> List[Diagnostic]:
         in_stores: Dict[int, AbstractStore] = {b.block_id: AbstractStore() for b in cfg.blocks}
         out_stores: Dict[int, AbstractStore] = {b.block_id: AbstractStore() for b in cfg.blocks}
+        edge_stores: Dict[Tuple[int, int], AbstractStore] = {}
         path_traces: Dict[int, List[PathStep]] = {b.block_id: [] for b in cfg.blocks}
 
         worklist: deque[int] = deque([cfg.entry_block.block_id])
@@ -49,7 +50,7 @@ class DataflowAnalyzer:
             predecessor_steps: List[PathStep] = []
 
             for edge in block.incoming:
-                pred_out = out_stores[edge.source_id]
+                pred_out = edge_stores.get((edge.source_id, edge.target_id), out_stores[edge.source_id])
                 merged_in = merged_in.join(pred_out)
                 if path_traces[edge.source_id]:
                     predecessor_steps.extend(path_traces[edge.source_id])
@@ -58,18 +59,30 @@ class DataflowAnalyzer:
             current_store = merged_in.clone()
             current_steps = list(predecessor_steps)
 
+            store_before_acq = merged_in.clone()
+            is_acq_block = False
+
             for stmt in block.statements:
                 span = PythonAstParser.get_span(stmt)
 
-                # 1. Resource Acquisition via ast.Assign: f = open(...)
+                # 1. Resource Acquisition via ast.Assign: f = open(...) or r, w = open_conn(...)
                 if isinstance(stmt, ast.Assign) and stmt.targets:
                     target_node = stmt.targets[0]
+                    target_vars = []
                     if isinstance(target_node, ast.Name):
-                        var_name = target_node.id
-                        is_acq, res_type = self.catalog.is_acquisition_expr(stmt.value)
-                        if is_acq and res_type:
+                        target_vars.append(target_node.id)
+                    elif isinstance(target_node, (ast.Tuple, ast.List)):
+                        for elt in target_node.elts:
+                            if isinstance(elt, ast.Name):
+                                target_vars.append(elt.id)
+
+                    is_acq, res_type = self.catalog.is_acquisition_expr(stmt.value)
+                    if is_acq and res_type:
+                        is_acq_block = True
+                        for var_name in target_vars:
+                            res_id = f"res_{hash((file_path, span.start.line, var_name)) & 0xFFFFFFFF:08x}"
                             symbol = ResourceSymbol(
-                                id=f"res_{uuid.uuid4().hex[:8]}",
+                                id=res_id,
                                 variable_name=var_name,
                                 resource_type=res_type,
                                 acquisition_span=span,
@@ -84,12 +97,14 @@ class DataflowAnalyzer:
                                 )
                             )
 
-                # 2. Context Manager with statement: with open(...) as f:
+                # 2. Context Manager with statement: with open(...) as f: or async with lock:
                 elif isinstance(stmt, (ast.With, getattr(ast, "AsyncWith", ast.With))):
                     for item in stmt.items:
                         var_name: Optional[str] = None
                         if item.optional_vars and isinstance(item.optional_vars, ast.Name):
                             var_name = item.optional_vars.id
+                        elif isinstance(item.context_expr, ast.Name):
+                            var_name = item.context_expr.id
 
                         is_acq, res_type = self.catalog.is_acquisition_expr(item.context_expr)
                         if var_name:
@@ -98,8 +113,9 @@ class DataflowAnalyzer:
                                 current_store.id_to_symbol[res_id].is_try_with_resources = True
                                 current_store.set_state(var_name, ResourceState.CLOSED)
                             elif is_acq and res_type:
+                                res_id = f"res_{hash((file_path, span.start.line, var_name)) & 0xFFFFFFFF:08x}"
                                 symbol = ResourceSymbol(
-                                    id=f"res_{uuid.uuid4().hex[:8]}",
+                                    id=res_id,
                                     variable_name=var_name,
                                     resource_type=res_type,
                                     acquisition_span=span,
@@ -131,6 +147,10 @@ class DataflowAnalyzer:
             if current_store.id_to_state != prev_out.id_to_state:
                 out_stores[block_id] = current_store
                 for edge in block.outgoing:
+                    if is_acq_block and edge.edge_type in (EdgeType.EXCEPTION, EdgeType.RAISE, EdgeType.CONTEXT_EXIT, EdgeType.FINALLY):
+                        edge_stores[(edge.source_id, edge.target_id)] = store_before_acq
+                    else:
+                        edge_stores[(edge.source_id, edge.target_id)] = current_store
                     worklist.append(edge.target_id)
 
         return self._generate_diagnostics(cfg, out_stores, path_traces, file_path)
@@ -171,10 +191,10 @@ class DataflowAnalyzer:
                 confidence = Confidence.MEDIUM
                 reason = f"Resource '{symbol.variable_name}' of type '{symbol.resource_type}' is closed on some execution branches but left unclosed on others."
 
-            elif exp_state == ResourceState.OPEN_MUST_CLOSE and norm_state in (ResourceState.CLOSED, ResourceState.UNACQUIRED):
+            elif exp_state in (ResourceState.OPEN_MUST_CLOSE, ResourceState.MAYBE_LEAKED) and norm_state == ResourceState.CLOSED:
                 classification = Classification.POTENTIAL_LEAK
                 confidence = Confidence.MEDIUM
-                reason = f"Resource '{symbol.variable_name}' of type '{symbol.resource_type}' is closed during normal execution, but an exception will bypass cleanup."
+                reason = f"Resource '{symbol.variable_name}' of type '{symbol.resource_type}' is closed during normal execution, but an unhandled exception will bypass cleanup."
 
             if classification:
                 steps = path_traces.get(cfg.exit_block.block_id, [])
@@ -188,7 +208,7 @@ class DataflowAnalyzer:
                         message=f"Resource leak detected: '{symbol.variable_name}' ({symbol.resource_type})",
                         file_path=file_path,
                         location=symbol.acquisition_span,
-                        resource_type=symbol.resource_type,
+                        resource_type=str(symbol.resource_type),
                         resource_variable=symbol.variable_name,
                         acquisition_location=symbol.acquisition_span,
                         execution_path=steps,
@@ -199,3 +219,4 @@ class DataflowAnalyzer:
                 )
 
         return diagnostics
+

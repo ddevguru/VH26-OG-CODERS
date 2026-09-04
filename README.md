@@ -1,21 +1,45 @@
 # LEAKGUARD
 
-**AST-Based Static Resource Leak Detection for CI/CD**
+**AST-Based Static Resource Leak Detection for Python**
 
-LeakGuard is a deterministic static analysis engine designed to catch Java resource leaks (unclosed streams, database connections, readers/writers, sockets, and auto-closeable resources) before they hit production.
+LeakGuard is a commercial-grade, deterministic static analysis platform designed to detect Python resource leaks (unclosed files, database connections, sockets, HTTP sessions, subprocesses, locks, and temp files) across realistic execution paths before code reaches production.
 
-## Features
-- **Deterministic AST & Control-Flow Analysis**: Built on `tree-sitter-java` and path-sensitive dataflow analysis.
-- **Precision Flow Engine**: Accurate handling of early returns, `try/catch/finally`, `try-with-resources`, and exception paths.
-- **CI/CD Native**: SARIF 2.1.0 output support, configurable severity thresholds, GitHub Action integration, and pre-commit hooks.
-- **Zero AI Core**: 100% deterministic code analysis without hallucination or LLM non-determinism.
+## Key Principles
+- **100% Offline & Deterministic**: Built using standard library Python `ast` and intra-procedural path-sensitive dataflow analysis.
+- **Zero Source Execution**: Analyzes code statically without executing target source files.
+- **No Regex Logic**: Uses formal AST visitors and control-flow graphs for analysis decisions.
+- **Enterprise Ready**: Full SARIF 2.1.0 report generation, pre-commit hooks, GitHub Actions CI integration, and Rich terminal output.
 
 ## Installation
+
 ```bash
 pip install -e .
 ```
 
-## Quick Start
+## Usage
+
+### CLI Scan
 ```bash
-leakguard scan ./examples/vulnerable --threshold high --format sarif --out results.sarif
+leakguard scan ./examples/vulnerable
 ```
+
+### SARIF Export for GitHub Security / Code Scanning
+```bash
+leakguard scan ./examples/vulnerable --format sarif --out results.sarif
+```
+
+### Pre-commit Integration
+Add to your `.pre-commit-config.yaml`:
+```yaml
+  - repo: local
+    hooks:
+      - id: leakguard
+        name: LeakGuard Resource Leak Checker
+        entry: leakguard scan
+        language: python
+        types: [python]
+```
+
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for full architectural documentation.

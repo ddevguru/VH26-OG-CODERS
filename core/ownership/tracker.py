@@ -34,3 +34,17 @@ class OwnershipTracker:
                 rhs_var = stmt.value.id
                 if store.get_state(rhs_var) != ResourceState.UNACQUIRED:
                     store.add_alias(lhs_var, rhs_var)
+
+        # Check call arguments in ast.Expr or ast.Assign: helper(f) or repo = Repo(f)
+        call_node: Optional[ast.Call] = None
+        if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
+            call_node = stmt.value
+        elif isinstance(stmt, ast.Assign) and isinstance(stmt.value, ast.Call):
+            call_node = stmt.value
+
+        if call_node:
+            for arg in call_node.args:
+                if isinstance(arg, ast.Name):
+                    var_name = arg.id
+                    if store.get_state(var_name) == ResourceState.OPEN_MUST_CLOSE:
+                        store.escape_resource(var_name, reason="PASSED_TO_EXTERNAL_CALL")

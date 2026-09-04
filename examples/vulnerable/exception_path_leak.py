@@ -1,10 +1,8 @@
 import sqlite3
 
 def fetch_data(query):
-    with sqlite3.connect("db.sqlite") as conn:
+    conn = sqlite3.connect("db.sqlite")
+    cursor = conn.cursor()
+    cursor.execute(query)
+    conn.close()
 
-        # May raise Exception
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-
-            # Skipped if exception occurs!

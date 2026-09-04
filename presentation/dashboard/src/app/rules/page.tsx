@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BookOpen, Plus, ShieldCheck, Tag } from "lucide-react";
+import { BookOpen, Plus, Tag, Shield, AlertCircle, X } from "lucide-react";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { api, RuleItem } from "@/lib/api";
@@ -13,7 +13,7 @@ export default function RulesPage() {
 
   const [ruleId, setRuleId] = useState("");
   const [ruleName, setRuleName] = useState("");
-  const [category, setCategory] = useState("File System");
+  const [category, setCategory] = useState("file");
   const [defaultSeverity, setDefaultSeverity] = useState("HIGH");
   const [defaultConfidence, setDefaultConfidence] = useState("HIGH");
   const [description, setDescription] = useState("");
@@ -21,8 +21,8 @@ export default function RulesPage() {
   const fetchRules = async () => {
     try {
       setLoading(true);
-      const data = await api.getRules();
-      setRules(data || []);
+      const res = await api.getRules();
+      setRules(res.items || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -56,19 +56,19 @@ export default function RulesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80, pb-5">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-indigo-400" /> Resource Lifetime Rules
+          <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+            <BookOpen className="w-6 h-6 text-emerald-600" /> Resource Lifetime Rules
           </h1>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-xs text-slate-500 font-semibold mt-1">
             Standard and custom static analysis rules defining resource acquisition and release patterns.
           </p>
         </div>
 
         <button
           onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Create Custom Rule
         </button>
@@ -79,18 +79,18 @@ export default function RulesPage() {
           {
             header: "Rule ID",
             accessor: (r: RuleItem) => (
-              <span className="font-mono text-xs font-bold text-amber-400">{r.rule_id}</span>
+              <span className="font-mono-code text-xs font-bold text-emerald-800">{r.rule_id}</span>
             ),
           },
           {
             header: "Rule Name",
-            accessor: (r: RuleItem) => <span className="font-bold text-white">{r.name}</span>,
+            accessor: (r: RuleItem) => <span className="font-bold text-slate-900 text-xs">{r.name}</span>,
           },
           {
             header: "Category",
             accessor: (r: RuleItem) => (
-              <div className="flex items-center gap-1.5 text-xs text-gray-300">
-                <Tag className="w-3.5 h-3.5 text-indigo-400" />
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                <Tag className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{r.category}</span>
               </div>
             ),
@@ -107,10 +107,10 @@ export default function RulesPage() {
             header: "Rule Origin",
             accessor: (r: RuleItem) => (
               <span
-                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${
+                className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border uppercase ${
                   r.is_custom
-                    ? "bg-purple-950/60 text-purple-300 border-purple-800/40"
-                    : "bg-blue-950/60 text-blue-300 border-blue-800/40"
+                    ? "bg-purple-50 text-purple-800 border-purple-200"
+                    : "bg-emerald-50 text-emerald-800 border-emerald-200"
                 }`}
               >
                 {r.is_custom ? "Custom Rule" : "Standard Engine"}
@@ -126,51 +126,59 @@ export default function RulesPage() {
 
       {/* Add Custom Rule Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0e1626] border border-gray-800 rounded-2xl w-full max-w-md p-6 space-y-4 shadow-2xl">
-            <h3 className="text-lg font-bold text-white">Create Custom Resource Rule</h3>
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md p-6 space-y-4 shadow-2xl text-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-lg font-extrabold text-slate-900">Create Custom Resource Rule</h3>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
             <form onSubmit={handleCreateRule} className="space-y-3 text-xs">
               <div>
-                <label className="block text-gray-400 font-semibold mb-1">Rule ID</label>
+                <label className="block text-slate-700 font-bold mb-1">Rule ID</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. CUST-DB-001"
                   value={ruleId}
                   onChange={(e) => setRuleId(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white font-mono"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono-code placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-400 font-semibold mb-1">Rule Name</label>
+                <label className="block text-slate-700 font-bold mb-1">Rule Name</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g. Unclosed Redis Lock Handle"
                   value={ruleName}
                   onChange={(e) => setRuleName(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-gray-400 font-semibold mb-1">Category</label>
+                <label className="block text-slate-700 font-bold mb-1">Category</label>
                 <input
                   type="text"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-gray-400 font-semibold mb-1">Severity</label>
+                  <label className="block text-slate-700 font-bold mb-1">Severity</label>
                   <select
                     value={defaultSeverity}
                     onChange={(e) => setDefaultSeverity(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="CRITICAL">Critical</option>
                     <option value="HIGH">High</option>
@@ -179,11 +187,11 @@ export default function RulesPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-gray-400 font-semibold mb-1">Confidence</label>
+                  <label className="block text-slate-700 font-bold mb-1">Confidence</label>
                   <select
                     value={defaultConfidence}
                     onChange={(e) => setDefaultConfidence(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   >
                     <option value="HIGH">High</option>
                     <option value="MEDIUM">Medium</option>
@@ -193,13 +201,13 @@ export default function RulesPage() {
               </div>
 
               <div>
-                <label className="block text-gray-400 font-semibold mb-1">Description</label>
+                <label className="block text-slate-700 font-bold mb-1">Description</label>
                 <textarea
                   rows={3}
                   placeholder="Explain why this resource handle must be closed..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-950 border border-gray-800 rounded-lg text-white"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
 
@@ -207,13 +215,13 @@ export default function RulesPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 font-semibold text-gray-300"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 font-semibold text-slate-700 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-white shadow-md shadow-indigo-600/30"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 font-extrabold text-white shadow-md shadow-emerald-600/20 cursor-pointer"
                 >
                   Create Rule
                 </button>

@@ -69,26 +69,26 @@ export default function OverviewPage() {
   return (
     <div className="space-y-8 pb-12">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.06] pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 border border-indigo-500/20">
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest text-emerald-800 bg-emerald-100 border border-emerald-200">
               Live Monitoring
             </span>
-            <span className="text-xs text-slate-400 font-medium">• Enterprise Control Plane</span>
+            <span className="text-xs text-slate-500 font-semibold">• Enterprise Control Plane</span>
           </div>
-          <h1 className="text-3xl font-extrabold text-white tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight">
             Security & Resource Overview
           </h1>
-          <p className="text-xs text-slate-400 mt-1 max-w-2xl">
+          <p className="text-xs text-slate-500 mt-1 max-w-2xl font-medium">
             Real-time static resource lifetime metrics, active leak findings, and path-sensitive analysis telemetry across organization repositories.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="glass-card px-4 py-2 rounded-xl flex items-center gap-2 border border-white/[0.08]">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-bold text-slate-200">Zero Execution Mode Active</span>
+          <div className="bg-white px-4 py-2 rounded-xl flex items-center gap-2 border border-slate-200/80 shadow-2xs">
+            <Sparkles className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-bold text-slate-800">Zero Execution Mode Active</span>
           </div>
         </div>
       </div>
@@ -131,42 +131,42 @@ export default function OverviewPage() {
 
       {/* Secondary Metrics */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="glass-card p-6 rounded-2xl flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-xs hover:border-emerald-300 transition-all duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mean Time to Remediation</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Mean Time to Remediation</span>
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-2xs">
               <Clock className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-extrabold text-white font-mono-code">4.2 Hours</div>
-            <p className="text-xs text-slate-400 mt-1">Automated AST call-site tracking enables rapid remediation</p>
+            <div className="text-2xl font-black text-slate-900 font-mono-code">4.2 Hours</div>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">Automated AST call-site tracking enables rapid remediation</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-xs hover:border-emerald-300 transition-all duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">False-Positive Rate</span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">False-Positive Rate</span>
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-2xs">
               <CheckCircle2 className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-extrabold text-emerald-400 font-mono-code">1.33%</div>
-            <p className="text-xs text-slate-400 mt-1">Validated across 320-fixture static analysis benchmark</p>
+            <div className="text-2xl font-black text-emerald-700 font-mono-code">1.33%</div>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">Validated across 320-fixture static analysis benchmark</p>
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200/80 flex flex-col justify-between shadow-xs hover:border-emerald-300 transition-all duration-200">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Scan Telemetry</span>
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+            <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">Scan Telemetry</span>
+            <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 shadow-2xs">
               <TrendingUp className="w-5 h-5" />
             </div>
           </div>
           <div className="mt-4">
-            <div className="text-2xl font-extrabold text-white font-mono-code">{scans.length} Scans</div>
-            <p className="text-xs text-slate-400 mt-1">Local-first CI/CD pipeline scans executed</p>
+            <div className="text-2xl font-black text-slate-900 font-mono-code">{scans.length} Scans</div>
+            <p className="text-xs text-slate-500 mt-1 font-semibold">Local-first CI/CD pipeline scans executed</p>
           </div>
         </div>
       </div>
@@ -175,8 +175,8 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-2xs">
                 <Activity className="w-4 h-4" />
               </div>
               <span>Recent Scans</span>
@@ -187,7 +187,7 @@ export default function OverviewPage() {
               {
                 header: "Commit SHA",
                 accessor: (s: ScanItem) => (
-                  <span className="font-mono-code text-xs text-indigo-300 font-semibold">{s.commit_sha || "HEAD"}</span>
+                  <span className="font-mono-code text-xs text-emerald-700 font-bold">{s.commit_sha || "HEAD"}</span>
                 ),
               },
               { header: "Branch", accessor: "branch" },
@@ -214,8 +214,8 @@ export default function OverviewPage() {
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shadow-2xs">
                 <AlertTriangle className="w-4 h-4" />
               </div>
               <span>Recent Leak Findings</span>
@@ -226,7 +226,7 @@ export default function OverviewPage() {
               {
                 header: "Rule",
                 accessor: (f: FindingItem) => (
-                  <span className="font-mono-code text-xs text-amber-400 font-semibold">{f.rule_id}</span>
+                  <span className="font-mono-code text-xs text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-200">{f.rule_id}</span>
                 ),
               },
               { header: "File", accessor: "file_path" },
@@ -249,3 +249,4 @@ export default function OverviewPage() {
     </div>
   );
 }
+

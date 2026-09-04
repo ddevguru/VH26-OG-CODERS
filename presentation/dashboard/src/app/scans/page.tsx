@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Activity, GitCommit, GitBranch, Clock, FileCode, CheckCircle2, XCircle } from "lucide-react";
+import { Activity, GitCommit, GitBranch, Clock, FileCode, CheckCircle2, XCircle, X } from "lucide-react";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { api, ScanItem } from "@/lib/api";
@@ -46,11 +46,11 @@ export default function ScansPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Activity className="w-6 h-6 text-indigo-400" /> Scan History
+      <div className="border-b border-slate-200/80 pb-5">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <Activity className="w-6 h-6 text-emerald-600" /> Scan History
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-xs text-slate-500 font-semibold mt-1">
           Historical log of AST static analysis scans executed via local CLI or CI/CD pipelines.
         </p>
       </div>
@@ -62,9 +62,9 @@ export default function ScansPage() {
             accessor: (s: ScanItem) => (
               <button
                 onClick={() => handleScanClick(s)}
-                className="flex items-center gap-2 font-mono text-xs text-indigo-400 hover:underline font-bold"
+                className="flex items-center gap-2 font-mono-code text-xs text-emerald-700 hover:underline font-bold"
               >
-                <GitCommit className="w-4 h-4 text-indigo-500" />
+                <GitCommit className="w-4 h-4 text-emerald-600" />
                 <span>{s.commit_sha || "HEAD"}</span>
               </button>
             ),
@@ -72,8 +72,8 @@ export default function ScansPage() {
           {
             header: "Branch",
             accessor: (s: ScanItem) => (
-              <div className="flex items-center gap-1.5 font-mono text-xs text-gray-300">
-                <GitBranch className="w-3.5 h-3.5 text-emerald-400" />
+              <div className="flex items-center gap-1.5 font-mono-code text-xs text-slate-600 font-semibold">
+                <GitBranch className="w-3.5 h-3.5 text-emerald-600" />
                 <span>{s.branch || "main"}</span>
               </div>
             ),
@@ -81,8 +81,8 @@ export default function ScansPage() {
           {
             header: "Files Scanned",
             accessor: (s: ScanItem) => (
-              <div className="flex items-center gap-1.5 text-xs text-gray-300">
-                <FileCode className="w-3.5 h-3.5 text-gray-400" />
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                <FileCode className="w-3.5 h-3.5 text-slate-400" />
                 <span>{s.scanned_files_count} files</span>
               </div>
             ),
@@ -90,8 +90,8 @@ export default function ScansPage() {
           {
             header: "Duration",
             accessor: (s: ScanItem) => (
-              <div className="flex items-center gap-1.5 text-xs text-gray-300">
-                <Clock className="w-3.5 h-3.5 text-gray-400" />
+              <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
                 <span>{s.duration_seconds.toFixed(2)}s</span>
               </div>
             ),
@@ -100,8 +100,8 @@ export default function ScansPage() {
             header: "Total Leaks",
             accessor: (s: ScanItem) => (
               <span
-                className={`font-semibold text-xs ${
-                  s.total_findings > 0 ? "text-red-400" : "text-emerald-400"
+                className={`font-bold text-xs ${
+                  s.total_findings > 0 ? "text-rose-700" : "text-emerald-800"
                 }`}
               >
                 {s.total_findings} findings
@@ -113,12 +113,12 @@ export default function ScansPage() {
             accessor: (s: ScanItem) => (
               <div className="flex items-center gap-1.5">
                 {s.policy_passed ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-950/70 text-emerald-400 border border-emerald-800/60">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> PASSED
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> PASSED
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-950/70 text-red-400 border border-red-800/60">
-                    <XCircle className="w-3.5 h-3.5" /> FAILED
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 uppercase">
+                    <XCircle className="w-3.5 h-3.5 text-rose-600" /> FAILED
                   </span>
                 )}
               </div>
@@ -126,7 +126,11 @@ export default function ScansPage() {
           },
           {
             header: "Scan Date",
-            accessor: (s: ScanItem) => new Date(s.created_at).toLocaleString(),
+            accessor: (s: ScanItem) => (
+              <span className="text-xs text-slate-500 font-semibold">
+                {new Date(s.created_at).toLocaleString()}
+              </span>
+            ),
           },
         ]}
         data={scans}
@@ -141,53 +145,55 @@ export default function ScansPage() {
 
       {/* Scan Detail Modal */}
       {selectedScan && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#0e1626] border border-gray-800 rounded-2xl w-full max-w-3xl p-6 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-indigo-400" /> Scan Detail Overview
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-3xl p-6 space-y-4 shadow-2xl text-slate-900">
+            <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+              <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-600" /> Scan Detail Overview
               </h3>
               <button
                 onClick={() => setSelectedScan(null)}
-                className="text-gray-400 hover:text-white text-xs font-semibold px-2 py-1 bg-gray-800 rounded-lg"
+                className="text-slate-400 hover:text-slate-700 p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 transition cursor-pointer"
               >
-                Close
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-900/60 p-4 rounded-xl border border-gray-800 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
               <div>
-                <span className="text-gray-400 block font-semibold">Commit SHA</span>
-                <span className="font-mono text-indigo-400 font-bold">{selectedScan.commit_sha}</span>
+                <span className="text-slate-500 block font-bold">Commit SHA</span>
+                <span className="font-mono-code text-emerald-700 font-bold">{selectedScan.commit_sha}</span>
               </div>
               <div>
-                <span className="text-gray-400 block font-semibold">Branch</span>
-                <span className="font-mono text-gray-200">{selectedScan.branch}</span>
+                <span className="text-slate-500 block font-bold">Branch</span>
+                <span className="font-mono-code text-slate-800 font-semibold">{selectedScan.branch}</span>
               </div>
               <div>
-                <span className="text-gray-400 block font-semibold">Files Scanned</span>
-                <span className="text-gray-200 font-bold">{selectedScan.scanned_files_count}</span>
+                <span className="text-slate-500 block font-bold">Files Scanned</span>
+                <span className="text-slate-900 font-extrabold">{selectedScan.scanned_files_count}</span>
               </div>
               <div>
-                <span className="text-gray-400 block font-semibold">Duration</span>
-                <span className="text-gray-200 font-bold">{selectedScan.duration_seconds.toFixed(2)}s</span>
+                <span className="text-slate-500 block font-bold">Duration</span>
+                <span className="text-slate-900 font-extrabold">{selectedScan.duration_seconds.toFixed(2)}s</span>
               </div>
             </div>
 
-            <h4 className="text-sm font-bold text-white pt-2">Associated Findings ({selectedScan.findings?.length || 0})</h4>
+            <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 pt-2">
+              Associated Findings ({selectedScan.findings?.length || 0})
+            </h4>
             <div className="max-h-60 overflow-y-auto space-y-2">
               {selectedScan.findings && selectedScan.findings.length > 0 ? (
                 selectedScan.findings.map((f) => (
-                  <div key={f.id} className="p-3 bg-gray-950 rounded-lg border border-gray-800 flex items-center justify-between text-xs">
+                  <div key={f.id} className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
                     <div>
-                      <span className="font-mono font-bold text-amber-400 mr-2">{f.rule_id}</span>
-                      <span className="text-gray-200 font-medium">{f.file_path}:{f.line_number}</span>
+                      <span className="font-mono-code font-bold text-emerald-800 mr-2">{f.rule_id}</span>
+                      <span className="text-slate-800 font-semibold">{f.file_path}:{f.line_number}</span>
                     </div>
                     <StatusBadge text={f.severity} type="severity" />
                   </div>
                 ))
               ) : (
-                <p className="text-xs text-gray-400 py-4 text-center bg-gray-950/50 rounded-lg border border-gray-800/50">
+                <p className="text-xs text-slate-500 py-4 text-center bg-slate-50 rounded-xl border border-slate-200 font-semibold">
                   No leak findings detected during this scan.
                 </p>
               )}
@@ -198,3 +204,4 @@ export default function ScansPage() {
     </div>
   );
 }
+

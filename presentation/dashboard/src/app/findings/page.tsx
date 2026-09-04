@@ -54,20 +54,20 @@ export default function FindingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <AlertTriangle className="w-6 h-6 text-amber-400" /> Resource Leak Findings
+      <div className="border-b border-slate-200/80 pb-5">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <AlertTriangle className="w-6 h-6 text-amber-600" /> Resource Leak Findings
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-xs text-slate-500 font-semibold mt-1">
           Detailed inventory of unclosed files, sockets, database handles, and subprocesses detected across project paths.
         </p>
       </div>
 
       {/* Filter Bar */}
-      <div className="glass-card p-4 rounded-xl border border-gray-800/80 flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-400">
-            <Filter className="w-4 h-4 text-indigo-400" /> Filters:
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+            <Filter className="w-4 h-4 text-emerald-600" /> Filters:
           </div>
 
           <select
@@ -76,7 +76,7 @@ export default function FindingsPage() {
               setSeverityFilter(e.target.value);
               setOffset(0);
             }}
-            className="px-3 py-1.5 bg-gray-950 border border-gray-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+            className="px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Severities</option>
             <option value="CRITICAL">Critical</option>
@@ -91,7 +91,7 @@ export default function FindingsPage() {
               setStatusFilter(e.target.value);
               setOffset(0);
             }}
-            className="px-3 py-1.5 bg-gray-950 border border-gray-800 rounded-lg text-xs text-white focus:outline-none focus:border-indigo-500"
+            className="px-3.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             <option value="">All Statuses</option>
             <option value="OPEN">Open</option>
@@ -100,9 +100,9 @@ export default function FindingsPage() {
           </select>
         </div>
 
-        <div className="text-xs text-gray-400 font-semibold">
-          Total Discovered: <span className="text-white font-bold">{total}</span>
-        </div>
+        <span className="text-xs font-bold text-slate-500">
+          Showing {findings.length} of {total} findings
+        </span>
       </div>
 
       <DataTable
@@ -110,21 +110,17 @@ export default function FindingsPage() {
           {
             header: "Rule ID",
             accessor: (f: FindingItem) => (
-              <span className="font-mono text-xs font-bold text-amber-400">{f.rule_id}</span>
+              <span className="font-mono-code text-xs font-bold text-amber-800">{f.rule_id}</span>
             ),
           },
           {
-            header: "Location",
+            header: "Resource File Path",
             accessor: (f: FindingItem) => (
-              <div className="font-mono text-xs text-gray-200">
-                <span>{f.file_path}</span>
-                <span className="text-emerald-400 font-bold ml-1">:{f.line_number}</span>
+              <div>
+                <div className="font-mono-code text-xs text-slate-900 font-bold">{f.file_path}:{f.line_number}</div>
+                {f.title && <div className="text-[11px] text-slate-500 font-semibold truncate max-w-xs">{f.title}</div>}
               </div>
             ),
-          },
-          {
-            header: "Leak Title",
-            accessor: (f: FindingItem) => <span className="font-medium text-white">{f.title}</span>,
           },
           {
             header: "Severity",
@@ -143,9 +139,10 @@ export default function FindingsPage() {
             accessor: (f: FindingItem) => (
               <button
                 onClick={() => setSelectedFinding(f)}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold text-emerald-800 transition cursor-pointer"
               >
-                <Eye className="w-3.5 h-3.5" /> Inspect
+                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Inspect</span>
               </button>
             ),
           },
@@ -156,15 +153,18 @@ export default function FindingsPage() {
         limit={20}
         offset={offset}
         onPageChange={setOffset}
-        emptyText="No leak findings match criteria"
-        emptySubtext="Clear active filters or run a scan to analyze project source code."
+        emptyText="No leak findings detected"
+        emptySubtext="Run a local CLI scan to verify your repository for unclosed file handles."
       />
 
-      <FindingDetailModal
-        finding={selectedFinding}
-        onClose={() => setSelectedFinding(null)}
-        onStatusUpdated={handleStatusUpdated}
-      />
+      {/* Finding Detail Modal */}
+      {selectedFinding && (
+        <FindingDetailModal
+          finding={selectedFinding}
+          onClose={() => setSelectedFinding(null)}
+          onStatusUpdated={handleStatusUpdated}
+        />
+      )}
     </div>
   );
 }

@@ -131,6 +131,7 @@ class Diagnostic(BaseModel):
     location: Span
     resource_type: str
     resource_variable: Optional[str] = None
+    function_name: Optional[str] = None
     acquisition_location: Optional[Span] = None
     release_location: Optional[Span] = None
     execution_path: List[PathStep] = Field(default_factory=list)

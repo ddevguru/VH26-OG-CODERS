@@ -61,29 +61,29 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-gray-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-white tracking-tight">Admin System Control Panel</h1>
-            <span className="bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-xs font-semibold px-2.5 py-0.5 rounded-full">
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Admin System Control Panel</h1>
+            <span className="bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-extrabold px-2.5 py-0.5 rounded-full">
               Global Admin
             </span>
           </div>
-          <p className="text-sm text-gray-400 mt-1">
+          <p className="text-xs text-slate-500 font-semibold mt-1">
             System-wide statistics, multi-tenant user access logs, and global static scan monitoring.
           </p>
         </div>
         <button
           onClick={loadAdminData}
           disabled={loading}
-          className="inline-flex items-center gap-2 px-4 py-2 bg-gray-900 border border-gray-800 hover:bg-gray-800 text-sm font-semibold text-gray-200 rounded-xl transition"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-slate-200/80 hover:bg-slate-50 text-xs font-bold text-slate-800 rounded-xl transition shadow-2xs cursor-pointer"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Refresh Data
+          <RefreshCw className={`w-4 h-4 text-emerald-600 ${loading ? "animate-spin" : ""}`} /> Refresh Data
         </button>
       </div>
 
       {error && (
-        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-sm">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs font-bold shadow-2xs">
           {error} (Showing fallback / local control plane data)
         </div>
       )}
@@ -125,23 +125,23 @@ export default function AdminPage() {
       </div>
 
       {/* Tabs Selection */}
-      <div className="flex border-b border-gray-800 space-x-6">
+      <div className="flex border-b border-slate-200 space-x-6">
         <button
           onClick={() => setActiveTab("users")}
-          className={`pb-3 text-sm font-semibold border-b-2 transition ${
+          className={`pb-3 text-xs font-extrabold border-b-2 transition cursor-pointer ${
             activeTab === "users"
-              ? "border-indigo-500 text-indigo-400"
-              : "border-transparent text-gray-400 hover:text-gray-200"
+              ? "border-emerald-600 text-emerald-800"
+              : "border-transparent text-slate-500 hover:text-slate-900"
           }`}
         >
           Registered Users & Roles ({users.length})
         </button>
         <button
           onClick={() => setActiveTab("scans")}
-          className={`pb-3 text-sm font-semibold border-b-2 transition ${
+          className={`pb-3 text-xs font-extrabold border-b-2 transition cursor-pointer ${
             activeTab === "scans"
-              ? "border-indigo-500 text-indigo-400"
-              : "border-transparent text-gray-400 hover:text-gray-200"
+              ? "border-emerald-600 text-emerald-800"
+              : "border-transparent text-slate-500 hover:text-slate-900"
           }`}
         >
           All System Scans ({scans.length})
@@ -157,15 +157,15 @@ export default function AdminPage() {
                 header: "User Email",
                 accessor: (u: any) => (
                   <div>
-                    <span className="font-semibold text-white text-sm">{u.email}</span>
-                    {u.full_name && <div className="text-xs text-gray-500">{u.full_name}</div>}
+                    <span className="font-bold text-slate-900 text-xs">{u.email}</span>
+                    {u.full_name && <div className="text-[10px] text-slate-500 font-semibold">{u.full_name}</div>}
                   </div>
                 ),
               },
               {
                 header: "Organization(s)",
                 accessor: (u: any) => (
-                  <span className="text-xs text-indigo-300 font-medium">
+                  <span className="text-xs text-emerald-800 font-bold">
                     {u.organizations && u.organizations.length > 0
                       ? u.organizations.join(", ")
                       : "Default Org"}
@@ -175,7 +175,7 @@ export default function AdminPage() {
               {
                 header: "Role",
                 accessor: (u: any) => (
-                  <span className="bg-indigo-500/20 text-indigo-300 text-xs font-semibold px-2 py-0.5 rounded-full border border-indigo-500/30">
+                  <span className="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200 uppercase">
                     {u.role || "Developer"}
                   </span>
                 ),
@@ -189,7 +189,7 @@ export default function AdminPage() {
               {
                 header: "Joined Date",
                 accessor: (u: any) => (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-slate-500 font-semibold">
                     {u.created_at ? new Date(u.created_at).toLocaleDateString() : "System Default"}
                   </span>
                 ),
@@ -211,13 +211,13 @@ export default function AdminPage() {
               {
                 header: "Repository",
                 accessor: (s: any) => (
-                  <span className="font-semibold text-white">{s.repository_name || "Unknown Repo"}</span>
+                  <span className="font-bold text-slate-900 text-xs">{s.repository_name || "Unknown Repo"}</span>
                 ),
               },
               {
                 header: "Commit / Branch",
                 accessor: (s: any) => (
-                  <span className="font-mono text-xs text-indigo-300">
+                  <span className="font-mono-code text-xs text-emerald-700 font-bold">
                     {s.branch || "main"} ({s.commit_sha ? s.commit_sha.substring(0, 7) : "HEAD"})
                   </span>
                 ),
@@ -229,7 +229,7 @@ export default function AdminPage() {
               {
                 header: "Total Findings",
                 accessor: (s: any) => (
-                  <span className={s.total_findings > 0 ? "text-amber-400 font-bold" : "text-emerald-400 font-medium"}>
+                  <span className={s.total_findings > 0 ? "text-amber-800 font-bold" : "text-emerald-700 font-bold"}>
                     {s.total_findings || 0} Leaks
                   </span>
                 ),
@@ -251,3 +251,4 @@ export default function AdminPage() {
     </div>
   );
 }
+

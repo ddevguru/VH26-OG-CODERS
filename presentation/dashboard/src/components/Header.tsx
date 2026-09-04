@@ -29,43 +29,43 @@ export const Header: React.FC = () => {
   const currentOrg = profile?.organizations?.[0]?.organization_name || "Acme Security Enterprise";
 
   return (
-    <header className="h-16 bg-[#080d18]/60 backdrop-blur-xl border-b border-white/[0.06] px-8 flex items-center justify-between sticky top-0 z-20">
+    <header className="h-16 bg-white/90 backdrop-blur-md border-b border-slate-200/80 px-8 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
       {/* Left: Org Indicator & Quick Search */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs font-semibold text-slate-200 hover:border-white/[0.15] transition-all cursor-pointer">
-          <Building2 className="w-4 h-4 text-indigo-400" />
+        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-800 hover:border-emerald-300 transition-all cursor-pointer">
+          <Building2 className="w-4 h-4 text-emerald-600" />
           <span>{currentOrg}</span>
         </div>
 
-        <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.02] border border-white/[0.06] text-xs text-slate-400 w-64">
-          <Search className="w-3.5 h-3.5 text-slate-500" />
+        <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-500 w-64">
+          <Search className="w-3.5 h-3.5 text-slate-400" />
           <span>Search repositories or findings...</span>
         </div>
       </div>
 
       {/* Right: Role, Notifications, Profile */}
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-xs font-semibold text-indigo-300">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-800">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
           <span>Role: {role}</span>
         </div>
 
-        <div className="flex items-center gap-3 border-l border-white/[0.08] pl-4">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 p-[1px]">
-            <div className="w-full h-full rounded-full bg-[#0d1322] flex items-center justify-center text-xs font-extrabold text-indigo-300">
+        <div className="flex items-center gap-3 border-l border-slate-200/80 pl-4">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-600 p-[1px] shadow-2xs">
+            <div className="w-full h-full rounded-full bg-emerald-50 flex items-center justify-center text-xs font-extrabold text-emerald-800">
               {profile?.email?.[0]?.toUpperCase() || "A"}
             </div>
           </div>
 
           <div className="hidden md:block text-left">
-            <p className="text-xs font-semibold text-slate-100">{profile?.full_name || "Alice Acme"}</p>
-            <p className="text-[10px] text-slate-400">{profile?.email || "admin@acme.com"}</p>
+            <p className="text-xs font-bold text-slate-900">{profile?.full_name || "Alice Acme"}</p>
+            <p className="text-[10px] text-slate-500 font-semibold">{profile?.email || "admin@acme.com"}</p>
           </div>
 
           <button
             onClick={handleLogout}
             title="Sign out"
-            className="p-2 text-slate-400 hover:text-rose-400 rounded-xl hover:bg-white/[0.04] transition-colors"
+            className="p-2 text-slate-400 hover:text-rose-600 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -74,3 +74,4 @@ export const Header: React.FC = () => {
     </header>
   );
 };
+

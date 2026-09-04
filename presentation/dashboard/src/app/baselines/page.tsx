@@ -31,43 +31,47 @@ export default function BaselinesPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <BookmarkCheck className="w-6 h-6 text-indigo-400" /> Baselines & Suppressions
+      <div className="border-b border-slate-200/80 pb-5">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <BookmarkCheck className="w-6 h-6 text-emerald-600" /> Baselines & Suppressions
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-xs text-slate-500 font-semibold mt-1">
           Manage repository baseline fingerprint snapshots and active finding suppression rules.
         </p>
       </div>
 
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-            <BookmarkCheck className="w-5 h-5 text-indigo-400" /> Repository Baselines
+          <h2 className="text-base font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+            <BookmarkCheck className="w-5 h-5 text-emerald-600" /> Repository Baselines
           </h2>
           <DataTable
             columns={[
               {
                 header: "Baseline Name",
-                accessor: (b: BaselineItem) => <span className="font-bold text-white">{b.name}</span>,
+                accessor: (b: BaselineItem) => <span className="font-bold text-slate-900 text-xs">{b.name}</span>,
               },
               {
                 header: "Repository ID",
                 accessor: (b: BaselineItem) => (
-                  <span className="font-mono text-xs text-indigo-400">{b.repo_id}</span>
+                  <span className="font-mono-code text-xs text-emerald-700 font-bold">{b.repo_id}</span>
                 ),
               },
               {
                 header: "Fingerprints Tracked",
                 accessor: (b: BaselineItem) => (
-                  <span className="font-semibold text-emerald-400">
+                  <span className="font-extrabold text-emerald-800 text-xs">
                     {b.fingerprints?.length || 0} fingerprints
                   </span>
                 ),
               },
               {
-                header: "Created At",
-                accessor: (b: BaselineItem) => new Date(b.created_at).toLocaleDateString(),
+                header: "Created Date",
+                accessor: (b: BaselineItem) => (
+                  <span className="text-xs text-slate-500 font-semibold">
+                    {new Date(b.created_at).toLocaleDateString()}
+                  </span>
+                ),
               },
             ]}
             data={baselines}
@@ -78,15 +82,15 @@ export default function BaselinesPage() {
         </div>
 
         <div>
-          <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-amber-400" /> Active Suppressions
+          <h2 className="text-base font-extrabold text-slate-900 mb-3 flex items-center gap-2">
+            <Shield className="w-5 h-5 text-amber-600" /> Active Suppressions
           </h2>
           <DataTable
             columns={[
               {
                 header: "Finding Fingerprint",
                 accessor: (s: SuppressionItem) => (
-                  <span className="font-mono text-xs text-amber-400 font-bold">
+                  <span className="font-mono-code text-xs text-amber-800 font-bold">
                     {s.finding_fingerprint}
                   </span>
                 ),
@@ -94,18 +98,16 @@ export default function BaselinesPage() {
               {
                 header: "Reason / Justification",
                 accessor: (s: SuppressionItem) => (
-                  <span className="text-gray-300">{s.reason || "Accepted legacy finding"}</span>
+                  <span className="text-slate-700 text-xs font-medium">{s.reason || "Accepted legacy finding"}</span>
                 ),
               },
               {
-                header: "Suppressed By User ID",
+                header: "Suppression Date",
                 accessor: (s: SuppressionItem) => (
-                  <span className="font-mono text-xs text-gray-400">{s.suppressed_by_user_id || "System"}</span>
+                  <span className="text-xs text-slate-500 font-semibold">
+                    {new Date(s.created_at).toLocaleDateString()}
+                  </span>
                 ),
-              },
-              {
-                header: "Date",
-                accessor: (s: SuppressionItem) => new Date(s.created_at).toLocaleDateString(),
               },
             ]}
             data={suppressions}

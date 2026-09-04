@@ -32,36 +32,36 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Users className="w-6 h-6 text-indigo-400" /> Teams & Organization Members
+      <div className="border-b border-slate-200/80 pb-5">
+        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+          <Users className="w-6 h-6 text-emerald-600" /> Teams & Organization Members
         </h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <p className="text-xs text-slate-500 font-semibold mt-1">
           Manage team access controls and Role-Based Access Control (RBAC) roles.
         </p>
       </div>
 
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-bold text-white mb-3">Organization Members & RBAC Roles</h2>
+          <h2 className="text-base font-extrabold text-slate-900 mb-3">Organization Members & RBAC Roles</h2>
           <DataTable
             columns={[
               {
                 header: "Member Name",
                 accessor: (m: any) => (
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-indigo-950 text-indigo-300 font-bold text-xs flex items-center justify-center border border-indigo-800">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-xs flex items-center justify-center border border-emerald-200">
                       {m.email?.[0]?.toUpperCase()}
                     </div>
-                    <span className="font-bold text-white">{m.full_name || m.email.split("@")[0]}</span>
+                    <span className="font-bold text-slate-900 text-xs">{m.full_name || m.email.split("@")[0]}</span>
                   </div>
                 ),
               },
               {
                 header: "Email Address",
                 accessor: (m: any) => (
-                  <div className="flex items-center gap-1.5 text-xs text-gray-300">
-                    <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <div className="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
                     <span>{m.email}</span>
                   </div>
                 ),
@@ -69,14 +69,18 @@ export default function TeamsPage() {
               {
                 header: "Assigned RBAC Role",
                 accessor: (m: any) => (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-950/70 text-indigo-300 border border-indigo-800/60">
-                    <Shield className="w-3.5 h-3.5 text-indigo-400" /> {m.role}
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-200 uppercase">
+                    <Shield className="w-3.5 h-3.5 text-emerald-600" /> {m.role}
                   </span>
                 ),
               },
               {
                 header: "Joined Date",
-                accessor: (m: any) => new Date(m.created_at).toLocaleDateString(),
+                accessor: (m: any) => (
+                  <span className="text-xs text-slate-500 font-semibold">
+                    {new Date(m.created_at).toLocaleDateString()}
+                  </span>
+                ),
               },
             ]}
             data={members}
@@ -87,28 +91,28 @@ export default function TeamsPage() {
         </div>
 
         {/* RBAC Permission Matrix Reference Card */}
-        <div className="glass-card p-5 rounded-xl border border-gray-800 space-y-3">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider">Role-Based Access Control (RBAC) Matrix</h3>
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Role-Based Access Control (RBAC) Matrix</h3>
           <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
-            <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
-              <span className="font-bold text-indigo-400 block mb-1">Owner</span>
-              <p className="text-gray-400">Full tenant control, billing, organization deletion, role updates.</p>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <span className="font-extrabold text-emerald-800 block mb-1">Owner</span>
+              <p className="text-slate-600 text-[11px]">Full tenant control, billing, organization deletion, role updates.</p>
             </div>
-            <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
-              <span className="font-bold text-blue-400 block mb-1">Admin</span>
-              <p className="text-gray-400">Repositories, projects, custom rules, integrations, policies.</p>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <span className="font-extrabold text-teal-800 block mb-1">Admin</span>
+              <p className="text-slate-600 text-[11px]">Repositories, projects, custom rules, integrations, policies.</p>
             </div>
-            <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
-              <span className="font-bold text-amber-400 block mb-1">Security</span>
-              <p className="text-gray-400">Policies, baselines, suppressions, scans, audit logs.</p>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <span className="font-extrabold text-indigo-800 block mb-1">Security</span>
+              <p className="text-slate-600 text-[11px]">Policies, baselines, suppressions, scans, audit logs.</p>
             </div>
-            <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
-              <span className="font-bold text-emerald-400 block mb-1">Developer</span>
-              <p className="text-gray-400">Scan ingestion, finding status updates, baseline updates.</p>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <span className="font-extrabold text-amber-800 block mb-1">Developer</span>
+              <p className="text-slate-600 text-[11px]">Scan ingestion, finding status updates, baseline updates.</p>
             </div>
-            <div className="p-3 bg-gray-900/60 rounded-lg border border-gray-800">
-              <span className="font-bold text-gray-400 block mb-1">Viewer</span>
-              <p className="text-gray-400">Read-only access to scans, findings, reports, and dashboards.</p>
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+              <span className="font-extrabold text-slate-700 block mb-1">Viewer</span>
+              <p className="text-slate-600 text-[11px]">Read-only access to scans, findings, reports, and dashboards.</p>
             </div>
           </div>
         </div>
@@ -116,3 +120,4 @@ export default function TeamsPage() {
     </div>
   );
 }
+

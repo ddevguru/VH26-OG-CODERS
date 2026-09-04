@@ -139,6 +139,125 @@ def scan(
 
 
 @app.command()
+def benchmark() -> None:
+    """Runs the 300+ fixture static analysis benchmark suite and outputs performance & accuracy metrics."""
+    from benchmarks.cli import run_benchmark_suite
+    sys.exit(run_benchmark_suite())
+
+
+@app.command()
+def server(
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host IP to bind SaaS control plane server"),
+    port: int = typer.Option(8000, "--port", "-p", help="Port for SaaS control plane server"),
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload for dev mode"),
+) -> None:
+    """Launches the LeakGuard Commercial SaaS Control Plane API server."""
+    import uvicorn
+    console.print(f"[bold green]Starting LeakGuard SaaS Control Plane API at http://{host}:{port}[/bold green]")
+    uvicorn.run("packages.saas.app:app", host=host, port=port, reload=reload)
+
+
+@app.command()
+def upload(
+    target: Path = typer.Argument(Path("."), help="Directory or file path to analyze"),
+    repo: str = typer.Option(..., "--repo", "-r", help="Repository name in control plane"),
+    url: str = typer.Option("http://127.0.0.1:8000", "--url", help="SaaS control plane server URL"),
+    token: str = typer.Option(..., "--token", "-t", help="SaaS API Bearer Token"),
+    org_id: Optional[str] = typer.Option(None, "--org-id", help="Organization ID (optional)"),
+) -> None:
+    """Scans locally and transmits structured findings metadata (NO raw source code) to SaaS Control Plane."""
+    from services.saas.sync import upload_scan_results
+    try:
+        config = LeakGuardConfig()
+        scanner = ProjectScanner(config)
+        scan_result = scanner.scan_directory(target)
+        res = upload_scan_results(
+            scan_result=scan_result,
+            repository_name=repo,
+            control_plane_url=url,
+            api_token=token,
+            organization_id=org_id,
+        )
+        console.print(f"[bold green][OK] Scan results synced to SaaS Control Plane successfully! Scan ID: {res.get('id')}[/bold green]")
+    except Exception as e:
+        console.print(f"[bold red][Error] SaaS Upload Failed: {e}[/bold red]")
+        sys.exit(1)
+
+
+@app.command()
+def fix(
+    target: Path = typer.Argument(Path("."), help="Directory or file path to analyze and generate AI-assisted patches"),
+    apply: bool = typer.Option(False, "--apply", help="Automatically write verified patches to source code upon human confirmation"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", help="Optional LLM API key (defaults to LEAKGUARD_LLM_API_KEY)"),
+) -> None:
+    """Generates AI-assisted remediation suggestions and validates patches against a 9-step AST pipeline."""
+    from services.ai.remediator import AIRemediator
+    from services.ai.validator import PatchValidator
+    from core.analysis.engine import AnalysisEngine
+
+    try:
+        config = LeakGuardConfig()
+        scanner = ProjectScanner(config)
+        scan_result = scanner.scan_directory(target) if target.is_dir() else ScanResult(
+            status="success",
+            scanned_files_count=1,
+            duration_seconds=0.0,
+            diagnostics=AnalysisEngine(config).analyze_file(target),
+            policy_passed=True,
+        )
+
+        if not scan_result.diagnostics:
+            console.print("[bold green][OK] Zero resource leaks detected. No fixes required.[/bold green]")
+            sys.exit(0)
+
+        remediator = AIRemediator(api_key=api_key)
+        validator = PatchValidator(config)
+
+        console.print(f"\n[bold cyan]Found {len(scan_result.diagnostics)} potential resource leaks. Initializing AI remediation & 9-step validation pipeline...[/bold cyan]\n")
+
+        for idx, diag in enumerate(scan_result.diagnostics, 1):
+            file_p = Path(diag.file_path)
+            if not file_p.exists():
+                continue
+
+            orig_source = file_p.read_text(encoding="utf-8")
+            rem_res = remediator.generate_candidate_patch(orig_source, diag)
+            val_report = validator.validate_patch(orig_source, rem_res.candidate_code, diag, file_name=file_p.name)
+
+            console.print(f"[bold yellow]Finding #{idx}: {diag.rule_id} at {diag.file_path}:{diag.location.start.line if diag.location else 1}[/bold yellow]")
+            console.print(f"[gray]{rem_res.explanation}[/gray]")
+            console.print(f"[bold font-mono text-emerald-400]Suggested Fix:[/bold font-mono text-emerald-400] {rem_res.suggested_fix} ({rem_res.provider})")
+
+            if val_report.is_valid:
+                console.print("[bold green][VALIDATED] Patch passed 9-step AST validation (Target leak cleared, 0 new leaks)[/bold green]")
+                console.print("\n[bold border-gray-700]Unified Diff Preview:[/bold border-gray-700]")
+                console.print(val_report.unified_diff)
+
+                if apply:
+                    file_p.write_text(rem_res.candidate_code, encoding="utf-8")
+                    console.print(f"[bold green][APPLIED] Verified patch written to '{file_p}' successfully![/bold green]\n")
+                else:
+                    console.print(f"[bold yellow][PENDING APPROVAL] Pass '--apply' flag to apply this verified patch to '{file_p}'.[/bold yellow]\n")
+            else:
+                console.print(f"[bold red][REJECTED] Patch validation failed: {val_report.failure_reason}[/bold red]\n")
+
+    except Exception as e:
+        console.print(f"[bold red][Error] Remediation Failure: {e}[/bold red]")
+        sys.exit(1)
+
+
+@app.command()
+def dashboard(
+    port: int = typer.Option(3000, "--port", "-p", help="Port for LeakGuard Commercial Web Dashboard"),
+) -> None:
+    """Launches the LeakGuard Commercial Web Dashboard dev server."""
+    import subprocess
+    dash_dir = Path(__file__).parent.parent.parent / "presentation" / "dashboard"
+    console.print(f"[bold green]Starting LeakGuard Web Dashboard at http://localhost:{port}[/bold green]")
+    subprocess.run(["npm", "run", "dev"], cwd=dash_dir, shell=True)
+
+
+@app.command()
 def version() -> None:
     """Prints the version of LeakGuard."""
     console.print("[bold cyan]LeakGuard v0.1.0[/bold cyan] - Static Resource Lifetime Analysis for Python")
@@ -146,3 +265,7 @@ def version() -> None:
 
 if __name__ == "__main__":
     app()
+
+
+
+

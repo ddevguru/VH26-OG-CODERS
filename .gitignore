@@ -18,3 +18,16 @@ ENV/
 *.sarif
 *.json
 leakguard-results.*
+
+# Node & JS Build
+node_modules/
+.next/
+out/
+dist/
+build/
+*.vsix
+
+# Python Build
+*.egg-info/
+*.egg
+

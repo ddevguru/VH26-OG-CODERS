@@ -189,6 +189,26 @@ class ApiClient {
     return data;
   }
 
+  async loginWithGoogle(email: string, full_name?: string, organization_name?: string) {
+    const data = await this.request<{
+      access_token: string;
+      organization_id: string;
+      role: string;
+      user_id: string;
+    }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ email, full_name, organization_name }),
+    });
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("leakguard_token", data.access_token);
+      localStorage.setItem("leakguard_org_id", data.organization_id);
+      localStorage.setItem("leakguard_role", data.role);
+      localStorage.setItem("leakguard_email", email);
+    }
+    return data;
+  }
+
   async getMe(): Promise<UserProfile> {
     return this.request<UserProfile>("/auth/me");
   }

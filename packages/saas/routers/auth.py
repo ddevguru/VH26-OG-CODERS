@@ -10,6 +10,7 @@ from packages.saas.auth.rbac import get_current_user
 from packages.saas.schemas.auth import (
     UserSignupRequest,
     UserLoginRequest,
+    GoogleAuthRequest,
     TokenResponse,
     UserProfileResponse,
     OrgRoleSummary,
@@ -102,6 +103,59 @@ def login(req: UserLoginRequest, db: Session = Depends(get_db)):
         user_id=user.id,
         organization_id=primary_role.org_id,
         role=primary_role.role,
+    )
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_auth(req: GoogleAuthRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == req.email).first()
+
+    if not user:
+        # Auto register new user via Google
+        hashed_pwd = hash_password(f"google-oauth-pwd-{req.email}")
+        user = User(email=req.email, hashed_password=hashed_pwd, full_name=req.full_name or req.email.split("@")[0])
+        db.add(user)
+        db.flush()
+
+        org_name = req.organization_name or f"{user.full_name}'s Org"
+        slug = slugify(org_name)
+        base_slug = slug
+        counter = 1
+        while db.query(Organization).filter(Organization.slug == slug).first():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        org = Organization(name=org_name, slug=slug)
+        db.add(org)
+        db.flush()
+
+        role = UserOrgRole(user_id=user.id, org_id=org.id, role=RoleEnum.OWNER.value)
+        db.add(role)
+
+        policy = Policy(org_id=org.id, name="Default Security Policy", min_severity="MEDIUM", is_default=True)
+        db.add(policy)
+
+        db.commit()
+        db.refresh(user)
+        db.refresh(org)
+        log_audit_event(db, org_id=org.id, user_id=user.id, action="google_signup", resource_type="User", resource_id=user.id)
+    else:
+        log_audit_event(db, org_id=user.org_roles[0].org_id if user.org_roles else "", user_id=user.id, action="google_login", resource_type="User", resource_id=user.id)
+
+    user_roles = db.query(UserOrgRole).filter(UserOrgRole.user_id == user.id).all()
+    primary_role = user_roles[0] if user_roles else None
+    org_id = primary_role.org_id if primary_role else ""
+    user_role = primary_role.role if primary_role else RoleEnum.DEVELOPER.value
+
+    access_token = create_access_token({"sub": user.id, "org_id": org_id, "role": user_role})
+
+    return TokenResponse(
+        access_token=access_token,
+        token_type="bearer",
+        expires_in=60 * 24 * 60,
+        user_id=user.id,
+        organization_id=org_id,
+        role=user_role,
     )
 
 

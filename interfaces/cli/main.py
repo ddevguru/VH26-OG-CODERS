@@ -789,11 +789,20 @@ def review(
     target: Path = typer.Argument(Path("."), help="Directory or file path to review"),
     commit: Optional[str] = typer.Option(None, "--commit", help="Commit SHA to review"),
     pr: Optional[str] = typer.Option(None, "--pr", help="Pull Request number to review"),
+    repo: Optional[str] = typer.Option(None, "--repo", "-r", help="GitHub repo (owner/repo)"),
+    server: str = typer.Option("http://localhost:8000", "--server", help="LeakGuard backend URL"),
     mode: str = typer.Option("detailed", "--mode", "-m", help="Review mode: concise | detailed | security | senior-engineer | developer-friendly"),
     json: bool = typer.Option(False, "--json", help="Output machine-readable JSON review"),
     no_color: bool = typer.Option(False, "--no-color", help="Disable terminal colors"),
 ) -> None:
     """Executes AI-powered Resource Security Code Review on code, PRs, or commits."""
+    if pr and repo:
+        try:
+            pr_num = int(pr)
+            pr_review_cmd(pr_number=pr_num, repo=repo, token=os.getenv("GITHUB_TOKEN"))
+            return
+        except ValueError:
+            pass
     from interfaces.cli.review import run_review_cmd
     run_review_cmd(target_path=target, commit=commit, pr=pr, mode=mode, json_mode=json, no_color=no_color)
 
@@ -1013,7 +1022,7 @@ def github_test(
         console.print(f"[red]❌ Webhook test failed: {e}[/red]")
 
 
-@app.command("review")
+@app.command("pr-trigger")
 def review_pr(
     pr: Optional[int] = typer.Option(None, "--pr", help="Pull request number to review"),
     commit: Optional[str] = typer.Option(None, "--commit", help="Commit SHA to review"),

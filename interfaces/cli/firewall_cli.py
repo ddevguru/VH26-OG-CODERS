@@ -117,24 +117,23 @@ def run_pr_diff_cmd(
     json_mode: bool = False,
 ) -> None:
     """Compares Before (base) vs After (head) findings and outputs PR Leak Diff."""
-    b_path = before_path.resolve()
-    a_path = after_path.resolve()
-
-    if not b_path.exists() or not a_path.exists():
-        console.print(f"[bold red]Error:[/bold red] Target paths for PR diff do not exist.")
-        raise typer.Exit(code=1)
+    b_path = before_path if before_path.exists() else Path(".")
+    a_path = after_path if after_path.exists() else Path(".")
 
     config = LeakGuardConfig()
     engine = AnalysisEngine(config)
 
-    def scan(p: Path) -> List[Diagnostic]:
+    def scan(p: Path, changed_only: bool = False) -> List[Diagnostic]:
+        cfg = LeakGuardConfig(changed_only=changed_only)
         if p.is_file():
             return engine.analyze_file(p)
-        scanner = ProjectScanner(config)
+        scanner = ProjectScanner(cfg)
         return scanner.scan_directory(p).diagnostics
 
-    before_diags = scan(b_path)
-    after_diags = scan(a_path)
+    # If git ref passed, scan base directory vs changed files
+    is_git_ref = (not before_path.exists() or not after_path.exists())
+    before_diags = scan(b_path, changed_only=False) if not is_git_ref else []
+    after_diags = scan(a_path, changed_only=is_git_ref)
 
     diff_engine = PRDiffEngine()
     result = diff_engine.compare(before=before_diags, after=after_diags, pr_number=pr_number)

@@ -1,5 +1,7 @@
 # LeakGuard Architecture Documentation
 
+> 📖 **Deep-Dive Technical Specification**: See [TECHNICAL_ARCHITECTURE.md](file:///c:/LeakGaurd/docs/TECHNICAL_ARCHITECTURE.md) for full code mapping, AI agent implementations, AST dataflow equations, database schemas, and CLI command source code locations.
+
 ## Overview
 LeakGuard is a static analysis platform implemented in Python (3.11+) designed to analyze Python repositories for resource lifecycle issues (unclosed files, database connections, sockets, HTTP sessions, subprocesses, locks, temp files, and custom resources) across control flow execution paths without running untrusted source code.
 

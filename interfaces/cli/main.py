@@ -575,7 +575,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_FILE=".leakguard/reports/scan_${TIMESTAMP}.log"
 LATEST_JSON=".leakguard/reports/latest_scan.json"
 
-python -m leakguard scan . --format json --out "$LATEST_JSON" > "$REPORT_FILE" 2>&1
+python -m leakguard scan . --format json --out "$LATEST_JSON" --voice > "$REPORT_FILE" 2>&1
 SCAN_EXIT_CODE=$?
 cat "$REPORT_FILE"
 
@@ -587,12 +587,15 @@ if [ $SCAN_EXIT_CODE -ne 0 ]; then
     echo " Scan log saved to: $REPORT_FILE"
     echo " Fix resource leaks before pushing or run: python -m leakguard fix ."
     echo "--------------------------------------------------------"
+    python -m leakguard speak "Attention! LeakGuard pre push firewall blocked unclosed resource leaks. Git push aborted."
     exit 1
 fi
 
 echo "[OK] LeakGuard Pre-Push Check Passed! Zero blocking leaks detected."
+python -m leakguard speak "LeakGuard pre push check passed. Zero resource leaks detected."
 exit 0
 """
+
         pre_push_hook = git_hooks_dir / "pre-push"
         pre_push_hook.write_text(hook_script, encoding="utf-8")
         try:

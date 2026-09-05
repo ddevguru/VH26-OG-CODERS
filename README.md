@@ -10,6 +10,8 @@
 
 ---
 
+> 📚 **Complete Project Master Documentation & Presentation Guide**: See [PROJECT_MASTER_DOCUMENTATION.md](file:///c:/LeakGaurd/PROJECT_MASTER_DOCUMENTATION.md) for full architecture map, CLI code lines, step-by-step lifecycles, and evaluation talking points.
+
 ## 📌 Executive Overview
 
 **LeakGuard** is an enterprise-grade static analysis and AI code review platform built to eliminate **resource leaks** (unclosed database connections, sockets, files, HTTP sessions, locks, subprocesses, and temporary files) across Python codebases.

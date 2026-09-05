@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { History, Activity, Shield, User } from "lucide-react";
 import { DataTable } from "@/components/DataTable";
-import { api, AuditEventItem } from "@/lib/api";
+import { api, AuditEventItem, formatDateTime } from "@/lib/api";
+
 
 export default function AuditLogPage() {
   const [loading, setLoading] = useState(true);
@@ -82,7 +83,7 @@ export default function AuditLogPage() {
             header: "Timestamp",
             accessor: (e: AuditEventItem) => (
               <span className="text-xs text-slate-500 font-semibold">
-                {new Date(e.created_at).toLocaleString()}
+                {formatDateTime(e.created_at)}
               </span>
             ),
           },

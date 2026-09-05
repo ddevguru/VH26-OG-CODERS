@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react";
 import { Activity, GitCommit, GitBranch, Clock, FileCode, CheckCircle2, XCircle, X } from "lucide-react";
 import { DataTable } from "@/components/DataTable";
 import { StatusBadge } from "@/components/StatusBadge";
-import { api, ScanItem } from "@/lib/api";
+import { api, ScanItem, formatDateTime } from "@/lib/api";
+
 
 export default function ScansPage() {
   const [loading, setLoading] = useState(true);
@@ -128,7 +129,7 @@ export default function ScansPage() {
             header: "Scan Date",
             accessor: (s: ScanItem) => (
               <span className="text-xs text-slate-500 font-semibold">
-                {new Date(s.created_at).toLocaleString()}
+                {formatDateTime(s.created_at)}
               </span>
             ),
           },

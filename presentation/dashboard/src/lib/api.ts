@@ -1,5 +1,29 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
+export function formatDateTime(dateStr?: string | null): string {
+  if (!dateStr) return "-";
+  let iso = dateStr;
+  if (!iso.endsWith("Z") && !iso.includes("+")) {
+    iso += "Z";
+  }
+  try {
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleString(undefined, {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+
 export interface PaginatedResponse<T> {
   items: T[];
   total: number;

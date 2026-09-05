@@ -49,6 +49,7 @@ def scan(
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable verbose output"),
     out: Optional[Path] = typer.Option(None, "--out", "-o", help="File path to save JSON or SARIF report"),
     update_baseline: bool = typer.Option(False, "--update-baseline", help="Update or create baseline file with current findings"),
+    voice: bool = typer.Option(False, "--voice", help="Announce scan results via voice audio TTS"),
 ) -> None:
     """Scans Python source files for unclosed resources across control-flow paths."""
     try:
@@ -155,7 +156,14 @@ def scan(
             if has_blocking:
                 if not quiet:
                     console.print(f"\n[bold red][X] Scan Failed: Findings violate '--fail-on {fail_threshold}' threshold.[/bold red]")
+                if voice:
+                    from services.voice.announcer import VoiceAnnouncer
+                    VoiceAnnouncer(enabled=True).speak_scan_result(passed=False, leak_count=len(scan_result.diagnostics), async_mode=False)
                 sys.exit(1)
+
+        if voice:
+            from services.voice.announcer import VoiceAnnouncer
+            VoiceAnnouncer(enabled=True).speak_scan_result(passed=True, leak_count=len(scan_result.diagnostics), async_mode=False)
 
         sys.exit(0)
 
@@ -464,7 +472,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 REPORT_FILE=".leakguard/reports/scan_${TIMESTAMP}.log"
 LATEST_JSON=".leakguard/reports/latest_scan.json"
 
-python -m leakguard scan . --format json --out "$LATEST_JSON" > "$REPORT_FILE" 2>&1
+python -m leakguard scan . --format json --out "$LATEST_JSON" --voice > "$REPORT_FILE" 2>&1
 SCAN_EXIT_CODE=$?
 cat "$REPORT_FILE"
 
@@ -476,12 +484,15 @@ if [ $SCAN_EXIT_CODE -ne 0 ]; then
     echo " Scan log saved to: $REPORT_FILE"
     echo " Fix resource leaks before pushing or run: python -m leakguard fix ."
     echo "--------------------------------------------------------"
+    python -m leakguard speak "Attention! LeakGuard pre push firewall blocked unclosed resource leaks. Git push aborted."
     exit 1
 fi
 
 echo "[OK] LeakGuard Pre-Push Check Passed! Zero blocking leaks detected."
+python -m leakguard speak "LeakGuard pre push check passed. Zero resource leaks detected."
 exit 0
 """
+
 
     pre_push_hook = git_hooks_dir / "pre-push"
     pre_push_hook.write_text(hook_script, encoding="utf-8")
@@ -606,9 +617,33 @@ exit 0
         def do_OPTIONS(self):
             self.send_response(200)
             self.send_header("Access-Control-Allow-Origin", "*")
-            self.send_header("Access-Control-Allow-Methods", "POST, OPTIONS")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
             self.send_header("Access-Control-Allow-Headers", "Content-Type")
             self.end_headers()
+
+        def do_GET(self):
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            try:
+                data = {
+                    "access_token": params.get("token", params.get("access_token", [""]))[0],
+                    "organization_id": params.get("organization_id", params.get("org_id", [""]))[0],
+                    "role": params.get("role", ["Developer"])[0],
+                    "email": params.get("email", ["User"])[0],
+                    "user_id": params.get("user_id", [""])[0],
+                    "action": "login",
+                }
+                if data["access_token"] or data["email"] != "User":
+                    callback_payload.update(data)
+                self.send_response(200)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"<html><body style='font-family:sans-serif;text-align:center;padding:50px;'><h2>\xe2\x9c\x94 LeakGuard CLI Authenticated!</h2><p>You can close this tab and return to your terminal.</p></body></html>")
+            except Exception:
+                self.send_response(400)
+                self.end_headers()
 
         def do_POST(self):
             content_length = int(self.headers.get("Content-Length", 0))
@@ -720,6 +755,7 @@ def watch(
     include: Optional[List[str]] = typer.Option(None, "--include", "-i", help="Glob pattern to include"),
     severity: Optional[Severity] = typer.Option(None, "--severity", "-s", help="Filter minimum severity threshold"),
     confidence: Optional[Confidence] = typer.Option(None, "--confidence", "-c", help="Filter minimum confidence threshold"),
+    voice: bool = typer.Option(False, "--voice", help="Enable live voice audio announcements for leak events"),
 ) -> None:
     """Continuously monitors Python project source files and displays Live Resource Radar AST analysis telemetry."""
     from interfaces.cli.watch import run_watch_mode
@@ -734,7 +770,9 @@ def watch(
         include=include,
         severity=severity,
         confidence=confidence,
+        voice=voice,
     )
+
 
 
 @app.command()
@@ -850,6 +888,17 @@ def diff_alias(
     """Alias for pr-diff. Compares Before vs After leak findings."""
     from interfaces.cli.firewall_cli import run_pr_diff_cmd
     run_pr_diff_cmd(before_path=before, after_path=after, pr_number=pr, json_mode=json)
+
+
+@app.command()
+def speak(
+    message: str = typer.Argument(..., help="Message string to announce via voice TTS"),
+    sync: bool = typer.Option(False, "--sync", help="Synchronous audio playback mode"),
+) -> None:
+    """Announces text message via system Voice TTS Engine."""
+    from services.voice.announcer import VoiceAnnouncer
+    announcer = VoiceAnnouncer(enabled=True)
+    announcer.speak(message, async_mode=not sync)
 
 
 @app.command()

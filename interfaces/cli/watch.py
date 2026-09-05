@@ -31,13 +31,18 @@ def run_watch_mode(
     include: Optional[List[str]] = None,
     severity: Optional[Severity] = None,
     confidence: Optional[Confidence] = None,
+    voice: bool = False,
 ) -> None:
     """Executes live file watcher and Live Resource Radar UI for interactive static leak detection."""
+    from services.voice.announcer import VoiceAnnouncer
+    announcer = VoiceAnnouncer(enabled=voice)
+
     target_path = target.resolve()
     if not target_path.exists():
         console = Console(no_color=no_color)
         console.print(f"[bold red]Error: Target path '{target}' does not exist.[/bold red]")
         raise typer.Exit(code=1)
+
 
     root_dir = target_path if target_path.is_dir() else target_path.parent
 
@@ -127,6 +132,14 @@ def run_watch_mode(
                     # Render transitions, compact resource table, and lifecycle visualization
                     renderer.render_transitions(transitions)
                     renderer.render_resource_radar_table(state)
+
+                    if voice and announcer:
+                        for tr in transitions:
+                            if tr.transition_type == "NEW_LEAK":
+                                announcer.speak(f"Alert! LeakGuard detected unclosed {tr.diagnostic.resource_type or 'resource'} handle in {ev.path.name}.")
+                            elif tr.transition_type == "RESOLVED":
+                                announcer.speak(f"Resource leak in {ev.path.name} has been resolved.")
+
 
                     if diags:
                         for d in diags[:2]:

@@ -1,21 +1,64 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ShieldCheck, LogIn, UserPlus, X, CheckCircle2, ArrowRight, UserCheck, Sparkles } from "lucide-react";
+import { ShieldCheck, LogIn, UserPlus, X, CheckCircle2, ArrowRight, UserCheck, Sparkles, Terminal } from "lucide-react";
 import { api, UserProfile } from "@/lib/api";
 
 export const ActivationModal: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
+  const [cliPort, setCliPort] = useState<string | null>(null);
+  const [cliConnected, setCliConnected] = useState(false);
+
+  const sendCliCallback = async (port: string, profile: any) => {
+    const token = localStorage.getItem("leakguard_token") || "";
+    const orgId = localStorage.getItem("leakguard_org_id") || "";
+    const role = localStorage.getItem("leakguard_role") || "Owner";
+    const email = profile?.email || localStorage.getItem("leakguard_email") || "dev@leakguard.io";
+
+    const payload = {
+      access_token: token,
+      organization_id: orgId,
+      role: role,
+      email: email,
+      action: "activate",
+    };
+
+    try {
+      await fetch(`http://127.0.0.1:${port}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setCliConnected(true);
+    } catch (e) {}
+
+    try {
+      await fetch(`http://localhost:${port}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setCliConnected(true);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
+      const port = params.get("cli_port");
+      if (port) setCliPort(port);
+
       if (params.get("activated") === "true") {
         setIsOpen(true);
         // Check if user is logged in
         api.getMe()
-          .then(setProfile => setActiveProfile(setProfile))
+          .then(profile => {
+            setActiveProfile(profile);
+            if (port) {
+              sendCliCallback(port, profile);
+            }
+          })
           .catch(() => {});
       }
     }
@@ -23,11 +66,15 @@ export const ActivationModal: React.FC = () => {
 
   if (!isOpen) return null;
 
-  const handleClose = () => {
+  const handleClose = async () => {
+    if (cliPort && activeProfile) {
+      await sendCliCallback(cliPort, activeProfile);
+    }
     setIsOpen(false);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.delete("activated");
+      url.searchParams.delete("cli_port");
       window.history.replaceState({}, "", url.toString());
     }
   };
@@ -61,6 +108,22 @@ export const ActivationModal: React.FC = () => {
             </h2>
           </div>
         </div>
+
+        {/* CLI Port Banner if active */}
+        {cliPort && (
+          <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center gap-3 text-xs">
+            <Terminal className="w-5 h-5 text-indigo-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-indigo-950">CLI Integration Detected</p>
+              <p className="text-[11px] text-indigo-700">Connecting CLI on port {cliPort}</p>
+            </div>
+            {cliConnected && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                ✓ Connected
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Info Box */}
         <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
@@ -117,7 +180,7 @@ export const ActivationModal: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* Sign In Button */}
             <a
-              href="/login"
+              href={cliPort ? `/login?activated=true&cli_port=${cliPort}` : "/login"}
               className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition active:scale-95"
             >
               <LogIn className="w-4 h-4" />
@@ -126,7 +189,7 @@ export const ActivationModal: React.FC = () => {
 
             {/* Sign Up Button */}
             <a
-              href="/register"
+              href={cliPort ? `/register?activated=true&cli_port=${cliPort}` : "/register"}
               className="flex items-center justify-center gap-2.5 px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-800 font-semibold text-xs transition active:scale-95"
             >
               <UserPlus className="w-4 h-4 text-emerald-600" />
@@ -148,5 +211,3 @@ export const ActivationModal: React.FC = () => {
     </div>
   );
 };
-
-

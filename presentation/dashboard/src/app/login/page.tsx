@@ -1,17 +1,54 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Shield, Lock, Mail, ArrowRight, AlertCircle, Sparkles, CheckCircle2, UserCheck } from "lucide-react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Shield, Lock, Mail, ArrowRight, AlertCircle, Sparkles, UserCheck, Terminal } from "lucide-react";
 import { api, UserProfile } from "@/lib/api";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const cliPort = searchParams.get("cli_port");
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(null);
+  const [cliSent, setCliSent] = useState(false);
+
+  const sendCliAuthCallback = async (port: string, data: any) => {
+    const token = localStorage.getItem("leakguard_token") || data?.access_token || "";
+    const orgId = localStorage.getItem("leakguard_org_id") || data?.organization_id || "";
+    const role = localStorage.getItem("leakguard_role") || data?.role || "Owner";
+    const userEmail = data?.email || localStorage.getItem("leakguard_email") || email || "admin@leakguard.io";
+
+    const payload = {
+      access_token: token,
+      organization_id: orgId,
+      role: role,
+      email: userEmail,
+      action: "login",
+    };
+
+    try {
+      await fetch(`http://127.0.0.1:${port}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setCliSent(true);
+    } catch (e) {}
+
+    try {
+      await fetch(`http://localhost:${port}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setCliSent(true);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     // Check if user is already logged in on web
@@ -19,11 +56,23 @@ export default function LoginPage() {
       const currentToken = localStorage.getItem("leakguard_token");
       if (currentToken && !currentToken.startsWith("demo_") && !currentToken.startsWith("local_")) {
         api.getMe()
-          .then(setProfile => setActiveProfile(setProfile))
+          .then(profile => {
+            setActiveProfile(profile);
+            if (cliPort) {
+              sendCliAuthCallback(cliPort, profile);
+            }
+          })
           .catch(() => {});
       }
     }
-  }, []);
+  }, [cliPort]);
+
+  const handleUseAccount = async () => {
+    if (cliPort && activeProfile) {
+      await sendCliAuthCallback(cliPort, activeProfile);
+    }
+    router.push("/");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +80,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await api.login(email, password);
+      const res = await api.login(email, password);
+      if (cliPort) {
+        await sendCliAuthCallback(cliPort, res);
+      }
       router.push("/");
     } catch (err: any) {
       // If login fails, attempt auto-signup on server
@@ -39,7 +91,10 @@ export default function LoginPage() {
         const username = email.split("@")[0] || "User";
         const safePassword = password.length >= 8 ? password : `${password}12345678`;
         await api.signup(email, safePassword, username, `${username}'s Org`);
-        await api.login(email, safePassword);
+        const res = await api.login(email, safePassword);
+        if (cliPort) {
+          await sendCliAuthCallback(cliPort, res);
+        }
         router.push("/");
         return;
       } catch (signupErr: any) {
@@ -65,6 +120,22 @@ export default function LoginPage() {
             Enter your credentials to access static leak detection telemetry
           </p>
         </div>
+
+        {/* CLI Port Banner if active */}
+        {cliPort && (
+          <div className="p-3.5 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center gap-3 text-xs">
+            <Terminal className="w-5 h-5 text-indigo-600 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-indigo-950">CLI Activation Requested</p>
+              <p className="text-[11px] text-indigo-700">Connecting authentication to CLI on port {cliPort}</p>
+            </div>
+            {cliSent && (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                ✓ Connected
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Existing Account Card if logged in on Web */}
         {activeProfile && (
@@ -93,7 +164,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => router.push("/")}
+              onClick={handleUseAccount}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition active:scale-95 cursor-pointer"
             >
               <span>Use this account</span>
@@ -157,28 +228,31 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="pt-1">
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center py-3 px-4 border border-emerald-600 text-xs font-extrabold rounded-xl text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
-            >
-              {loading ? "Authenticating..." : "Sign In to Control Plane"}
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md shadow-emerald-600/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+          >
+            <span>{loading ? "Authenticating..." : "Sign In to Control Plane"}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
         </form>
 
-        <div className="text-center pt-2 border-t border-slate-100">
-          <p className="text-xs text-slate-500 font-medium">
-            Don't have an account?{" "}
-            <a href="/register" className="text-emerald-600 hover:text-emerald-700 font-bold underline">
-              Register New Organization
-            </a>
-          </p>
+        <div className="text-center text-xs text-slate-500">
+          Need an organization account?{" "}
+          <a href={cliPort ? `/register?activated=true&cli_port=${cliPort}` : "/register"} className="text-emerald-700 font-bold hover:underline">
+            Register here
+          </a>
         </div>
       </div>
     </div>
   );
 }
 
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-center text-xs font-bold text-slate-500">Loading Login...</div>}>
+      <LoginContent />
+    </Suspense>
+  );
+}

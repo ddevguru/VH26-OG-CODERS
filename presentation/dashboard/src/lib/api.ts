@@ -403,6 +403,18 @@ class ApiClient {
       }),
     });
   }
+
+  // AI Agent Catalog APIs
+  async getAIAgents(): Promise<any[]> {
+    return this.request<any[]>("/ai/agents");
+  }
+
+  async runAIAgent(agentKey: string, payload: Record<string, any> = {}): Promise<any> {
+    return this.request<any>(`/ai/agents/${agentKey}/run`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
 }
 
 export const api = new ApiClient();

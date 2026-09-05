@@ -213,3 +213,159 @@ def get_scan_ai_timeline(
         }
         for a in activities
     ]
+
+
+class RunAgentRequest(BaseModel):
+    finding_id: Optional[str] = None
+    rule_id: str = "RULE_LEAK_001"
+    file_path: str = "module.py"
+    line_number: int = 1
+    resource_type: str = "DATABASE"
+    resource_variable: str = "conn"
+    source_code: Optional[str] = ""
+
+
+@router.get("/agents")
+def get_ai_agents_catalog(
+    auth: AuthContext = Depends(require_role(RoleEnum.VIEWER)),
+):
+    """Retrieves JSON catalog of all 10 specialized AI agents in LeakGuard."""
+    return [
+        {
+            "name": "Resource Hunter Agent",
+            "key": "hunter",
+            "category": "Detection",
+            "icon": "Search",
+            "description": "Identifies unreleased file handles, socket streams, and database connections along execution paths.",
+            "capabilities": ["AST Variable Tracking", "Lifetime Boundary Check"],
+        },
+        {
+            "name": "Code Reviewer Agent",
+            "key": "reviewer",
+            "category": "Review",
+            "icon": "CheckSquare",
+            "description": "Provides senior static security code reviews with clean architectural guidance.",
+            "capabilities": ["Multi-File Review", "Senior Engineer Tone"],
+        },
+        {
+            "name": "Root Cause Agent",
+            "key": "root_cause",
+            "category": "Analysis",
+            "icon": "Stethoscope",
+            "description": "Traces control flow exception paths and identifies exact line of missing cleanup.",
+            "capabilities": ["CFG Branch Unwinding", "Exception Path Tracing"],
+        },
+        {
+            "name": "Security Impact Agent",
+            "key": "security",
+            "category": "Security",
+            "icon": "ShieldAlert",
+            "description": "Evaluates resource exhaustion vulnerabilities (FD leaks, socket starvation, connection pool exhaustion).",
+            "capabilities": ["CVE Mapping", "Resource Exhaustion Scoring"],
+        },
+        {
+            "name": "Fix Generator Agent",
+            "key": "fix_generator",
+            "category": "Remediation",
+            "icon": "Zap",
+            "description": "Synthesizes standard strategy-pattern patches ('with', 'try-finally', 'close()').",
+            "capabilities": ["Context Manager Synthesis", "Strategy Pattern Fixes"],
+        },
+        {
+            "name": "Regression Prevention Agent",
+            "key": "regression",
+            "category": "Verification",
+            "icon": "GitCommit",
+            "description": "Ensures generated patches preserve existing code behavior without introducing side effects.",
+            "capabilities": ["Behavioral Preservation Check", "Regression Testing"],
+        },
+        {
+            "name": "Verification Sandbox Agent",
+            "key": "verification",
+            "category": "Verification",
+            "icon": "CheckCheck",
+            "description": "Executes 9-step AST sandbox validation to verify target leak clearance.",
+            "capabilities": ["9-Step AST Sandbox", "Deterministic Re-Analysis"],
+        },
+        {
+            "name": "PR Summary Agent",
+            "key": "pr_agent",
+            "category": "Integration",
+            "icon": "GitPullRequest",
+            "description": "Generates security summaries and diff statistics for Pull Request reviews.",
+            "capabilities": ["PR Diff Summary", "Delta Reporting"],
+        },
+        {
+            "name": "Documentation Agent",
+            "key": "documentation",
+            "category": "Docs",
+            "icon": "BookOpen",
+            "description": "Generates clear remediation docs and coding guidelines for dev teams.",
+            "capabilities": ["Markdown Doc Synthesis", "Best Practice Patterns"],
+        },
+        {
+            "name": "Policy Enforcement Agent",
+            "key": "policy",
+            "category": "Policy",
+            "icon": "Sliders",
+            "description": "Evaluates developer firewall rules and determines block vs warn decisions.",
+            "capabilities": ["Firewall Rule Check", "Gate Pass/Block"],
+        },
+    ]
+
+
+@router.post("/agents/{agent_name}/run")
+def run_individual_agent(
+    agent_name: str,
+    req: RunAgentRequest,
+    auth: AuthContext = Depends(require_role(RoleEnum.VIEWER)),
+):
+    """Executes a single specialized AI Agent on demand."""
+    user_id = auth.user.id if auth.user else "user_default"
+    org_id = auth.org_id if hasattr(auth, "org_id") else "org_default"
+    orchestrator = AIOrchestrator(user_id=user_id, org_id=org_id)
+
+    span = Span(start=SourceLocation(line=req.line_number, column=1), end=SourceLocation(line=req.line_number, column=10))
+    diag = Diagnostic(
+        finding_id=req.finding_id or "FND-001",
+        rule_id=req.rule_id,
+        message=f"Resource {req.resource_variable} unclosed",
+        classification=Classification.DEFINITE_LEAK,
+        file_path=req.file_path,
+        location=span,
+        resource_type=req.resource_type,
+        resource_variable=req.resource_variable,
+        reason=f"Unclosed {req.resource_type} handle '{req.resource_variable}'",
+    )
+
+    fix_candidate = {
+        "candidate_patch": req.source_code or f"with open('{req.file_path}') as f:\n    pass\n",
+        "unified_diff": f"--- {req.file_path}\n+++ {req.file_path}\n@@ -1,1 +1,1 @@\n",
+        "strategy_name": "with_context_manager",
+        "explanation": "Wrapped resource allocation inside python context manager.",
+    }
+
+    agent_key = agent_name.lower().replace("-", "_")
+    if agent_key in ["hunter", "resourcehunteragent", "resource_hunter"]:
+        res = orchestrator.hunter_agent.run({"diagnostic": diag, "source_code": req.source_code})
+    elif agent_key in ["root_cause", "rootcauseagent", "root_cause_agent"]:
+        res = orchestrator.root_cause_agent.run({"diagnostic": diag, "source_code": req.source_code})
+    elif agent_key in ["security", "securityimpactagent", "security_impact"]:
+        res = orchestrator.security_agent.run({"diagnostic": diag})
+    elif agent_key in ["fix_generator", "fixgeneratoragent", "fix_agent"]:
+        res = orchestrator.fix_agent.run({"diagnostic": diag, "source_code": req.source_code})
+    elif agent_key in ["verifier", "verification", "verificationagent", "verification_agent"]:
+        res = orchestrator.verifier_agent.run({"diagnostic": diag, "fix_candidate": fix_candidate, "file_name": req.file_path})
+    elif agent_key in ["regression", "regressionagent", "regression_agent"]:
+        res = orchestrator.regression_agent.run({"fix_candidate": fix_candidate})
+    elif agent_key in ["pr_agent", "pragent", "pr"]:
+        res = orchestrator.pr_agent.run({"files_count": 1, "new_leaks": 0, "resolved_leaks": 1, "verified_fixes": 1, "pr_number": "PR #42"})
+    elif agent_key in ["documentation", "docagent", "doc_agent", "docs"]:
+        res = orchestrator.doc_agent.run({"diagnostic": diag})
+    elif agent_key in ["policy", "policyagent", "policy_agent"]:
+        res = orchestrator.policy_agent.run({"diagnostics": [diag]})
+    else:
+        res = orchestrator.reviewer_agent.run({"diagnostics": [diag], "source_code": req.source_code, "review_mode": ReviewMode.DETAILED, "target_name": req.file_path})
+
+    return res.model_dump()
+

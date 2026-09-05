@@ -19,11 +19,14 @@ import {
   Zap,
   Bot,
   GitFork,
+  GitPullRequest,
 } from "lucide-react";
+
 
 const NAV_ITEMS = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
   { name: "AI Agents", href: "/agents", icon: Bot },
+  { name: "PR Reviews", href: "/pull-requests", icon: GitPullRequest },
   { name: "Data Flow", href: "/data-flow", icon: GitFork },
   { name: "Repositories", href: "/repositories", icon: FolderGit2 },
   { name: "Scans", href: "/scans", icon: Activity },
@@ -36,6 +39,7 @@ const NAV_ITEMS = [
   { name: "Audit Logs", href: "/audit-log", icon: History },
   { name: "Settings", href: "/settings", icon: Settings },
 ];
+
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();

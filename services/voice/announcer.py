@@ -17,6 +17,9 @@ class VoiceAnnouncer:
     def __init__(self, enabled: bool = True) -> None:
         self.enabled = enabled
 
+    def announce(self, text: str, async_mode: bool = True) -> None:
+        self.speak(text, async_mode=async_mode)
+
     def speak(self, text: str, async_mode: bool = True) -> None:
         if not self.enabled or not text:
             return

@@ -313,3 +313,184 @@ Index("idx_scans_org_repo", Scan.org_id, Scan.repo_id)
 Index("idx_audit_org_created", AuditEvent.org_id, AuditEvent.created_at)
 Index("idx_ai_activity_org_user", AIAgentActivity.org_id, AIAgentActivity.user_id)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GitHub PR Integration Models
+# ─────────────────────────────────────────────────────────────────────────────
+
+class GithubInstallation(Base):
+    """GitHub App installation record per tenant organization."""
+    __tablename__ = "github_installations"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    installation_id = Column(String(100), nullable=True, index=True)
+    github_account = Column(String(255), nullable=True)   # GitHub org/user login
+    github_account_type = Column(String(50), nullable=True)  # User or Organization
+    token_mode = Column(String(20), default="pat")  # "pat" or "app"
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+
+
+class GithubRepository(Base):
+    """A GitHub repository connected to a LeakGuard tenant organization."""
+    __tablename__ = "github_repositories"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    installation_id = Column(String(36), ForeignKey("github_installations.id"), nullable=True)
+    repo_full_name = Column(String(512), nullable=False, index=True)  # owner/repo
+    repo_owner = Column(String(255), nullable=False)
+    repo_name = Column(String(255), nullable=False)
+    default_branch = Column(String(100), default="main")
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    pull_request_scans = relationship("GithubPRScan", back_populates="repository", cascade="all, delete-orphan")
+
+
+class GithubPRScan(Base):
+    """Scan record for a specific (repo, pr_number, head_sha) — idempotency key."""
+    __tablename__ = "github_pr_scans"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    github_repo_id = Column(String(36), ForeignKey("github_repositories.id"), nullable=True, index=True)
+    repo_full_name = Column(String(512), nullable=False, index=True)
+    pr_number = Column(Integer, nullable=False, index=True)
+    head_sha = Column(String(100), nullable=False, index=True)
+    base_sha = Column(String(100), nullable=True)
+    pr_branch = Column(String(255), nullable=True)
+    pr_author = Column(String(255), nullable=True)
+    pr_title = Column(String(512), nullable=True)
+    status = Column(String(50), default="started", index=True)  # started, completed, error, skipped_duplicate
+    risk_score = Column(Integer, default=0)
+    risk_label = Column(String(50), nullable=True)  # LOW, MEDIUM, HIGH, CRITICAL
+    pr_status = Column(String(20), nullable=True)    # PASS, WARNING, FAIL
+    definite_count = Column(Integer, default=0)
+    potential_count = Column(Integer, default=0)
+    safe_count = Column(Integer, default=0)
+    scanned_files_json = Column(Text, nullable=True, default="[]")
+    github_review_id = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    repository = relationship("GithubRepository", back_populates="pull_request_scans")
+    findings = relationship("GithubFinding", back_populates="pr_scan", cascade="all, delete-orphan")
+    reviews = relationship("GithubReview", back_populates="pr_scan", cascade="all, delete-orphan")
+
+
+class GithubFinding(Base):
+    """A deterministic finding from a GitHub PR scan."""
+    __tablename__ = "github_findings"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    pr_scan_id = Column(String(36), ForeignKey("github_pr_scans.id"), nullable=False, index=True)
+    finding_id = Column(String(100), nullable=False, index=True)  # LeakGuard internal ID
+    rule_id = Column(String(100), nullable=False)
+    file_path = Column(String(512), nullable=False)
+    line_number = Column(Integer, default=0)
+    classification = Column(String(50), nullable=False)  # DEFINITE_LEAK, POTENTIAL_LEAK, SAFE
+    resource_type = Column(String(100), nullable=True)
+    resource_variable = Column(String(255), nullable=True)
+    message = Column(Text, nullable=True)
+    reason = Column(Text, nullable=True)
+    ai_explanation_json = Column(Text, nullable=True)   # AI explanation (not authoritative)
+    created_at = Column(DateTime, default=utc_now)
+
+    pr_scan = relationship("GithubPRScan", back_populates="findings")
+    fix_candidates = relationship("AIFixCandidate", back_populates="finding", cascade="all, delete-orphan")
+
+
+class GithubReview(Base):
+    """A GitHub PR review posted by LeakGuard bot."""
+    __tablename__ = "github_reviews"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    pr_scan_id = Column(String(36), ForeignKey("github_pr_scans.id"), nullable=False, index=True)
+    github_review_id = Column(String(100), nullable=True)
+    status = Column(String(20), nullable=True)    # PASS, WARNING, FAIL
+    risk_score = Column(Integer, default=0)
+    finding_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=utc_now)
+
+    pr_scan = relationship("GithubPRScan", back_populates="reviews")
+    comments = relationship("GithubReviewComment", back_populates="review", cascade="all, delete-orphan")
+
+
+class GithubReviewComment(Base):
+    """An inline review comment posted on a specific file/line."""
+    __tablename__ = "github_review_comments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    review_id = Column(String(36), ForeignKey("github_reviews.id"), nullable=False, index=True)
+    github_comment_id = Column(String(100), nullable=True)
+    finding_id = Column(String(100), nullable=True, index=True)
+    file_path = Column(String(512), nullable=True)
+    line_number = Column(Integer, nullable=True)
+    body = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    review = relationship("GithubReview", back_populates="comments")
+
+
+class AIFixCandidate(Base):
+    """An AI-generated fix candidate for a GitHub finding.
+
+    CRITICAL: Must be verified by LeakGuard deterministic analyzer before
+    it can be committed. Never auto-committed.
+    """
+    __tablename__ = "ai_fix_candidates"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    github_finding_id = Column(String(36), ForeignKey("github_findings.id"), nullable=False, index=True)
+    user_id = Column(String(36), nullable=True)
+    strategy = Column(String(100), nullable=False, default="try_finally")
+    candidate_code = Column(Text, nullable=True)
+    unified_diff = Column(Text, nullable=True)
+    explanation = Column(Text, nullable=True)
+    verification_status = Column(String(50), default="PENDING")  # PENDING, VERIFIED_FIX, REJECTED
+    is_verified = Column(Boolean, default=False)
+    before_findings = Column(Integer, default=1)
+    after_findings = Column(Integer, default=0)
+    rejected_reason = Column(Text, nullable=True)
+    verification_steps_json = Column(Text, nullable=True, default="[]")
+    commit_sha = Column(String(100), nullable=True)  # Set after user-triggered commit
+    committed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=utc_now)
+
+    finding = relationship("GithubFinding", back_populates="fix_candidates")
+    verification = relationship("PatchVerification", back_populates="fix_candidate", uselist=False, cascade="all, delete-orphan")
+
+
+class PatchVerification(Base):
+    """Result of running LeakGuard deterministic analyzer on an AI-generated patch."""
+    __tablename__ = "patch_verifications"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    org_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    fix_candidate_id = Column(String(36), ForeignKey("ai_fix_candidates.id"), nullable=False, unique=True, index=True)
+    is_valid = Column(Boolean, default=False)
+    original_finding_cleared = Column(Boolean, default=False)
+    new_findings_count = Column(Integer, default=0)
+    syntax_valid = Column(Boolean, default=False)
+    failure_reason = Column(Text, nullable=True)
+    unified_diff = Column(Text, nullable=True)
+    validation_steps_json = Column(Text, nullable=True, default="[]")
+    created_at = Column(DateTime, default=utc_now)
+
+    fix_candidate = relationship("AIFixCandidate", back_populates="verification")
+
+
+# GitHub PR idempotency index — prevents duplicate scans for same commit
+Index(
+    "idx_github_pr_scan_idempotency",
+    GithubPRScan.repo_full_name,
+    GithubPRScan.pr_number,
+    GithubPRScan.head_sha,
+)
+Index("idx_github_findings_pr_scan", GithubFinding.pr_scan_id, GithubFinding.classification)
+Index("idx_ai_fix_finding", AIFixCandidate.github_finding_id, AIFixCandidate.verification_status)

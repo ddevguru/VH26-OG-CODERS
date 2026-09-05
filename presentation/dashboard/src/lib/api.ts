@@ -469,6 +469,85 @@ class ApiClient {
   async getDataflowChains(): Promise<any[]> {
     return this.request<any[]>("/dataflow/chains");
   }
+
+  // ─── GitHub PR Review API ───────────────────────────────────────────────
+
+  async getGitHubRepos(): Promise<any[]> {
+    return this.request<any[]>("/github/repositories");
+  }
+
+  async connectGitHubRepo(repoFullName: string): Promise<any> {
+    return this.request<any>("/github/repositories/connect", {
+      method: "POST",
+      body: JSON.stringify({ repo_full_name: repoFullName }),
+    });
+  }
+
+  async getGitHubPRs(limit = 20, offset = 0): Promise<any> {
+    return this.request<any>(`/github/prs?limit=${limit}&offset=${offset}`);
+  }
+
+  async getGitHubPR(prScanId: string): Promise<any> {
+    return this.request<any>(`/github/prs/${prScanId}`);
+  }
+
+  async getGitHubPRFindings(prScanId: string): Promise<any[]> {
+    return this.request<any[]>(`/github/prs/${prScanId}/findings`);
+  }
+
+  async getGitHubPRReview(prScanId: string): Promise<any> {
+    return this.request<any>(`/github/prs/${prScanId}/review`);
+  }
+
+  async generateGitHubFix(
+    prScanId: string,
+    findingId: string,
+    body: { strategy: string; source_code?: string }
+  ): Promise<any> {
+    return this.request<any>(
+      `/github/prs/${prScanId}/findings/${findingId}/fix`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    );
+  }
+
+  async commitGitHubFix(
+    prScanId: string,
+    findingId: string,
+    body: { fix_candidate_id: string; committer_name?: string; committer_email?: string }
+  ): Promise<any> {
+    return this.request<any>(
+      `/github/prs/${prScanId}/findings/${findingId}/commit`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      }
+    );
+  }
+
+  async triggerGitHubPRReview(repoFullName: string, prNumber: number): Promise<any> {
+    return this.request<any>(
+      `/github/prs/trigger-review?repo_full_name=${encodeURIComponent(repoFullName)}&pr_number=${prNumber}`,
+      { method: "POST" }
+    );
+  }
+
+  async getGitHubFindingSource(prScanId: string, findingId: string): Promise<any> {
+    return this.request<any>(`/github/prs/${prScanId}/findings/${findingId}/source`);
+  }
+
+  async explainGitHubFinding(prScanId: string, findingId: string): Promise<any> {
+    return this.request<any>(
+      `/github/prs/${prScanId}/findings/${findingId}/explain`,
+      { method: "POST" }
+    );
+  }
+
+  async getGitHubPRAudit(prScanId: string): Promise<any[]> {
+    return this.request<any[]>(`/github/prs/${prScanId}/audit`);
+  }
 }
 
 export const api = new ApiClient();

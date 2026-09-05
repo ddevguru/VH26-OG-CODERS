@@ -2,6 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 from packages.saas.config import settings
 from packages.saas.db.database import init_db, get_db, _SessionLocal
 from packages.saas.db.models import Rule, User, Organization, UserOrgRole, Policy, RoleEnum
@@ -23,6 +29,8 @@ from packages.saas.routers import (
     phase16,
     firewall_diff,
     dataflow,
+    webhooks,
+    github_pr,
 )
 
 
@@ -131,6 +139,10 @@ def create_app() -> FastAPI:
     app.include_router(firewall_diff.router)
     app.include_router(dataflow.router, prefix=api_prefix)
     app.include_router(dataflow.router)
+
+    # GitHub PR Review Integration
+    app.include_router(webhooks.router)          # POST /webhooks/github
+    app.include_router(github_pr.router, prefix=api_prefix)  # GET/POST /api/v1/github/...
 
 
     @app.get("/health", tags=["Health"])

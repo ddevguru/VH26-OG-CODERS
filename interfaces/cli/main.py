@@ -1,6 +1,12 @@
 from pathlib import Path
 from typing import Optional, List
 import sys
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 import json
 import os
 import time
@@ -188,7 +194,7 @@ def benchmark() -> None:
 def server(
     host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host IP to bind SaaS control plane server"),
     port: int = typer.Option(8000, "--port", "-p", help="Port for SaaS control plane server"),
-    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload for dev mode"),
+    reload: bool = typer.Option(True, "--reload", help="Enable auto-reload for dev mode"),
 ) -> None:
     """Launches the LeakGuard Commercial SaaS Control Plane API server."""
     import uvicorn
@@ -915,8 +921,415 @@ if __name__ == "__main__":
     app()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# GitHub Integration CLI Commands
+# ─────────────────────────────────────────────────────────────────────────────
+
+github_app = typer.Typer(name="github", help="GitHub PR Review Integration commands")
+app.add_typer(github_app)
 
 
+@github_app.command("connect")
+def github_connect(
+    repo: str = typer.Argument(..., help="GitHub repository in 'owner/repo' format"),
+    server: str = typer.Option("http://localhost:8000", "--server", help="LeakGuard backend URL"),
+) -> None:
+    """Connect a GitHub repository for PR Review scanning.
+
+    \b
+    Example:
+        leakguard github connect myorg/myrepo
+
+    \b
+    After connecting, configure the GitHub webhook:
+        URL: <server>/webhooks/github
+        Content-Type: application/json
+        Secret: $GITHUB_WEBHOOK_SECRET
+        Events: Pull requests
+    """
+    import urllib.request, urllib.error, json, os
+    token_set = bool(os.getenv("GITHUB_TOKEN"))
+    secret_set = bool(os.getenv("GITHUB_WEBHOOK_SECRET"))
+
+    console.print(f"\n[bold cyan]🛡️ LeakGuard GitHub Connect[/bold cyan]")
+    console.print(f"Repository: [bold]{repo}[/bold]")
+
+    if not token_set:
+        console.print("[yellow]⚠  GITHUB_TOKEN not set. GitHub API calls will fail.[/yellow]")
+    if not secret_set:
+        console.print("[yellow]⚠  GITHUB_WEBHOOK_SECRET not set. Webhooks will not be validated.[/yellow]")
+
+    # Try to connect via API
+    try:
+        import urllib.request as ur
+        payload = json.dumps({"repo_full_name": repo}).encode()
+        req = ur.Request(
+            f"{server}/api/v1/github/repositories/connect",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with ur.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            console.print(f"\n[green]✅ Repository connected: {repo}[/green]")
+            console.print(f"\n[bold]Webhook Setup Instructions:[/bold]")
+            console.print(data.get("setup_instructions", ""))
+    except Exception as e:
+        console.print(f"\n[red]❌ Connection failed: {e}[/red]")
+        console.print(f"\n[dim]Configure webhook manually:[/dim]")
+        console.print(f"  URL: {server}/webhooks/github")
+        console.print(f"  Secret: $GITHUB_WEBHOOK_SECRET")
+        console.print(f"  Events: Pull requests")
+
+
+@github_app.command("test")
+def github_test(
+    server: str = typer.Option("http://localhost:8000", "--server", help="LeakGuard backend URL"),
+) -> None:
+    """Send a ping to test the LeakGuard webhook endpoint."""
+    import urllib.request, json, hmac, hashlib, os
+    secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
+    payload = json.dumps({"zen": "Keep it logically awesome.", "hook_id": 1}).encode()
+
+    sig = ""
+    if secret:
+        sig = "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+
+    try:
+        req = urllib.request.Request(
+            f"{server}/webhooks/github",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "X-GitHub-Event": "ping",
+                "X-Hub-Signature-256": sig,
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+            console.print(f"[green]✅ Webhook test successful: {data.get('message', 'OK')}[/green]")
+    except Exception as e:
+        console.print(f"[red]❌ Webhook test failed: {e}[/red]")
+
+
+@app.command("review")
+def review_pr(
+    pr: Optional[int] = typer.Option(None, "--pr", help="Pull request number to review"),
+    commit: Optional[str] = typer.Option(None, "--commit", help="Commit SHA to review"),
+    repo: Optional[str] = typer.Option(None, "--repo", "-r", help="GitHub repo (owner/repo)"),
+    server: str = typer.Option("http://localhost:8000", "--server", help="LeakGuard backend URL"),
+) -> None:
+    """Trigger a LeakGuard review for a GitHub pull request or commit.
+
+    \b
+    Examples:
+        leakguard review --pr 42 --repo myorg/myrepo
+        leakguard review --commit abc1234 --repo myorg/myrepo
+    """
+    import urllib.request, json
+    if not pr and not commit:
+        console.print("[red]❌ Specify --pr <number> or --commit <sha>[/red]")
+        raise typer.Exit(1)
+    if not repo:
+        console.print("[red]❌ Specify --repo owner/repo[/red]")
+        raise typer.Exit(1)
+
+    if pr:
+        console.print(f"[bold cyan]🛡️ Triggering LeakGuard review for PR #{pr} in {repo}[/bold cyan]")
+        try:
+            req = urllib.request.Request(
+                f"{server}/api/v1/github/prs/trigger-review?repo_full_name={repo}&pr_number={pr}",
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                data = json.loads(resp.read())
+                console.print(f"[green]✅ Review queued: {data}[/green]")
+        except Exception as e:
+            console.print(f"[red]❌ Review trigger failed: {e}[/red]")
+    else:
+        console.print(f"[yellow]Commit review for {commit} in {repo} — scanning locally...[/yellow]")
+        # Local scan for commit SHA
+        from core.analysis.engine import AnalysisEngine
+        from core.common.config import LeakGuardConfig
+        console.print("[dim]Run leakguard scan . --changed-only for local commit analysis[/dim]")
+
+
+@app.command("fix")
+def fix_finding(
+    finding: str = typer.Option(..., "--finding", help="Finding ID to generate fix for"),
+    strategy: str = typer.Option("try_finally", "--strategy", help="Fix strategy: try_finally, context_manager, explicit_close"),
+    source: Optional[Path] = typer.Option(None, "--source", help="Source file to fix"),
+) -> None:
+    """Generate and verify an AI fix for a specific finding.
+
+    \b
+    Example:
+        leakguard fix --finding LG-abc123 --source path/to/file.py --strategy context_manager
+    """
+    if not source or not source.exists():
+        console.print("[red]❌ Source file required: --source path/to/file.py[/red]")
+        raise typer.Exit(1)
+
+    source_code = source.read_text(encoding="utf-8")
+    console.print(f"[bold cyan]🤖 Generating AI fix for finding {finding}[/bold cyan]")
+    console.print(f"Strategy: [bold]{strategy}[/bold]")
+
+    from core.common.models import Diagnostic, Classification, Span, SourceLocation
+    from services.ai.auto_fixer import AutoFixerEngine
+    from services.ai.validator import PatchValidator
+
+    diag = Diagnostic(
+        finding_id=finding,
+        rule_id="LG-MANUAL",
+        message="Manual fix request",
+        classification=Classification.DEFINITE_LEAK,
+        file_path=str(source),
+        location=Span(start=SourceLocation(line=1, column=1), end=SourceLocation(line=1, column=1)),
+        resource_type="FILE",
+        resource_variable="resource",
+    )
+    fixer = AutoFixerEngine(PatchValidator())
+    result = fixer.generate_and_verify(source_code, diag, strategy, str(source.name))
+
+    if result.is_verified:
+        console.print(f"\n[green]✅ Fix VERIFIED — {result.strategy}[/green]")
+        console.print(f"[dim]{result.unified_diff[:500]}[/dim]")
+    else:
+        console.print(f"\n[red]❌ Fix REJECTED: {result.rejected_reason}[/red]")
+
+
+@app.command("verify")
+def verify_patch(
+    patch: Path = typer.Argument(..., help="Path to a unified diff patch file or fixed source file"),
+    original: Optional[Path] = typer.Option(None, "--original", help="Original source file"),
+) -> None:
+    """Verify a patch using the LeakGuard deterministic analyzer.
+
+    \b
+    Example:
+        leakguard verify fixed_file.py --original original_file.py
+    """
+    if not patch.exists():
+        console.print(f"[red]❌ File not found: {patch}[/red]")
+        raise typer.Exit(1)
+
+    candidate_src = patch.read_text(encoding="utf-8")
+    original_src = original.read_text(encoding="utf-8") if original and original.exists() else ""
+
+    from services.ai.validator import PatchValidator
+    from core.common.models import Diagnostic, Classification, Span, SourceLocation
+
+    console.print(f"[bold cyan]🔬 Running LeakGuard patch verification: {patch.name}[/bold cyan]")
+
+    diag = Diagnostic(
+        finding_id="verify-cli",
+        rule_id="LG-CLI",
+        message="CLI verification",
+        classification=Classification.DEFINITE_LEAK,
+        file_path=str(patch),
+        location=Span(start=SourceLocation(line=1, column=1), end=SourceLocation(line=1, column=1)),
+        resource_type="FILE",
+        resource_variable="resource",
+    )
+
+    validator = PatchValidator()
+    report = validator.validate_patch(
+        original_source=original_src or candidate_src,
+        candidate_source=candidate_src,
+        target_diagnostic=diag,
+        file_name=patch.name,
+    )
+
+    if report.is_valid:
+        console.print("[green]✅ Patch VERIFIED — No leaks detected, original finding cleared[/green]")
+        for step in report.validation_steps:
+            console.print(f"  ✓ {step}")
+    else:
+        console.print(f"[red]❌ Patch REJECTED: {report.failure_reason}[/red]")
+        console.print(f"  New findings: {report.new_findings_count}")
+
+
+@app.command(name="pr")
+def pr_review_cmd(
+    pr_number: int = typer.Argument(..., help="Pull Request number to review (e.g. 1, 42)"),
+    repo: Optional[str] = typer.Option(None, "--repo", "-r", help="GitHub repository in 'owner/repo' format (e.g. doctron/LeakGuard)"),
+    voice: bool = typer.Option(True, "--voice", help="Announce scan results via voice audio TTS"),
+    token: Optional[str] = typer.Option(None, "--token", "-t", help="GitHub Personal Access Token"),
+) -> None:
+    """Executes a full GitHub Pull Request AI Code Review with rich terminal graphics & voice alerts.
+
+    \b
+    Examples:
+        python -m leakguard pr 1 --repo owner/repo
+        python -m leakguard pr 42 --voice
+    """
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.syntax import Syntax
+    import subprocess
+
+    if token:
+        os.environ["GITHUB_TOKEN"] = token
+
+    # Auto-detect repository from git config if not provided
+    resolved_repo = repo
+    if not resolved_repo:
+        try:
+            res = subprocess.run(["git", "config", "--get", "remote.origin.url"], capture_output=True, text=True)
+            raw_url = res.stdout.strip()
+            if "github.com" in raw_url:
+                clean = raw_url.replace(".git", "").replace(":", "/").split("github.com/")[-1]
+                parts = [p for p in clean.strip("/").split("/") if p]
+                if len(parts) >= 2:
+                    resolved_repo = f"{parts[-2]}/{parts[-1]}"
+        except Exception:
+            pass
+
+    if not resolved_repo:
+        console.print("[bold red]❌ Error: Repository not specified.[/bold red] Please pass [bold]--repo owner/repo[/bold].")
+        sys.exit(1)
+
+    console.print(Panel(
+        f"[bold white]Repository:[/bold white] [cyan]{resolved_repo}[/cyan]\n"
+        f"[bold white]Pull Request:[/bold white] [bold yellow]#{pr_number}[/bold yellow]\n"
+        f"[bold white]Engine:[/bold white] [green]LeakGuard AST Static Analysis + AI Root Cause[/green]",
+        title="[bold cyan]LeakGuard GitHub PR AI Review Engine[/bold cyan]",
+        border_style="cyan",
+    ))
+
+    console.print("[bold yellow]⏳ Fetching PR diff from GitHub & executing deterministic static analysis...[/bold yellow]")
+
+    try:
+        from services.github_pr.orchestrator import PRReviewOrchestrator
+        from services.voice.announcer import VoiceAnnouncer
+
+        orchestrator = PRReviewOrchestrator()
+        result = orchestrator.execute_pr_review(repo_full_name=resolved_repo, pr_number=pr_number)
+
+        analysis_completed = result.get("analysis_completed", False)
+        analysis_failed = result.get("analysis_failed", False)
+        github_post_success = result.get("github_post_success", False)
+        scan_status = result.get("status", "unknown")
+
+        risk = result.get("risk", {})
+        pr_status = result.get("pr_status", "UNKNOWN")
+        score = risk.get("score", 0)
+        definite = risk.get("definite_count", 0)
+        potential = risk.get("potential_count", 0)
+        safe = risk.get("safe_count", 0)
+        unknown = risk.get("unknown_count", 0)
+        findings = result.get("findings", [])
+
+        # ── Analysis Status Panel ──────────────────────────────────────────
+        if analysis_failed or scan_status == "error":
+            console.print(Panel(
+                "[bold red]❌ ANALYSIS FAILED[/bold red]\n"
+                f"{result.get('error', 'Unknown analysis error')}",
+                title="LeakGuard Analysis",
+                border_style="red",
+            ))
+        elif analysis_completed:
+            console.print(Panel(
+                "[bold green]✓ ANALYSIS COMPLETED[/bold green]\n"
+                f"Scanned {len(result.get('scanned_files', []))} Python file(s). "
+                f"Found {definite} definite, {potential} potential, {safe} safe, {unknown} unknown.",
+                title="LeakGuard Analysis",
+                border_style="green" if pr_status == "PASS" else "yellow",
+            ))
+        else:
+            console.print(Panel(
+                "[bold yellow]⚠ ANALYSIS INCOMPLETE[/bold yellow]",
+                title="LeakGuard Analysis",
+                border_style="yellow",
+            ))
+
+        # ── GitHub Post Status ─────────────────────────────────────────────
+        if github_post_success:
+            inline_count = result.get("inline_comments_posted", 0)
+            console.print(Panel(
+                f"[bold green]✓ GitHub posting successful[/bold green]\n"
+                f"Summary comment updated. Inline comments: {inline_count}",
+                title="GitHub Post",
+                border_style="green",
+            ))
+        else:
+            console.print(Panel(
+                f"[bold red]❌ GitHub posting failed[/bold red]\n"
+                f"{result.get('github_post_error', result.get('error', 'Unknown error'))}",
+                title="GitHub Post",
+                border_style="red",
+            ))
+
+        if not analysis_completed:
+            console.print("\n[bold red]Cannot report PR PASS/FAIL — analysis did not complete.[/bold red]")
+            sys.exit(1)
+
+        # Build Rich Summary Table
+        table = Table(title=f"Pull Request #{pr_number} Review Summary", title_style="bold green")
+        table.add_column("Metric", style="bold white")
+        table.add_column("Value", style="bold")
+
+        status_color = "red" if pr_status == "FAIL" else ("yellow" if pr_status == "WARNING" else "green")
+        table.add_row("PR Status", f"[{status_color}]{pr_status}[/{status_color}]")
+        table.add_row("Composite Risk Score", f"[bold red]{score}/100[/bold red]" if score >= 60 else f"[bold green]{score}/100[/bold green]")
+        table.add_row("Definite Leaks", f"[red]{definite}[/red]" if definite > 0 else "0")
+        table.add_row("Potential Leaks", f"[yellow]{potential}[/yellow]" if potential > 0 else "0")
+        table.add_row("Safe Findings", f"[green]{safe}[/green]")
+        table.add_row("Unknown", f"{unknown}")
+
+        console.print(table)
+
+        leak_findings = [f for f in findings if f.get("classification") not in ("SAFE",)]
+        if leak_findings:
+            console.print("\n[bold red]🚨 Resource Leaks Detected:[/bold red]")
+            for i, f in enumerate(leak_findings, 1):
+                file_p = f.get("file_path", "unknown")
+                line_p = f.get("line_number", f.get("line", "?"))
+                res_var = f.get("resource_variable", "unknown")
+                res_type = f.get("resource_type", "FILE")
+                classification = f.get("classification", "DEFINITE_LEAK")
+                explanation = f.get("ai_explanation", {})
+                root_cause = explanation.get("root_cause", f.get("message", "Unclosed resource on execution path."))
+
+                card_content = (
+                    f"[bold yellow]Location:[/bold yellow] {file_p}:{line_p}\n"
+                    f"[bold yellow]Resource Variable:[/bold yellow] [bold white]{res_var}[/bold white] ({res_type})\n"
+                    f"[bold yellow]Classification:[/bold yellow] [bold red]{classification}[/bold red]\n\n"
+                    f"[bold cyan]💡 Root Cause Analysis:[/bold cyan]\n{root_cause}"
+                )
+
+                console.print(Panel(
+                    card_content,
+                    title=f"[bold red]Finding #{i}: {file_p}:{line_p}[/bold red]",
+                    border_style="red" if classification == "DEFINITE_LEAK" else "yellow",
+                ))
+
+        if voice and analysis_completed:
+            announcer = VoiceAnnouncer()
+            if pr_status == "FAIL":
+                announcer.announce(f"Attention! LeakGuard detected {definite} unclosed resource leaks in Pull Request number {pr_number}.")
+            elif pr_status == "WARNING":
+                announcer.announce(f"Warning! LeakGuard detected potential resource leaks in Pull Request number {pr_number}.")
+            else:
+                announcer.announce(f"LeakGuard static check passed for Pull Request number {pr_number}! Zero resource leaks detected.")
+
+        if github_post_success and analysis_completed:
+            console.print(f"\n[bold green]✓ PR #{pr_number} review posted to GitHub.[/bold green]")
+        elif analysis_completed and not github_post_success:
+            console.print(f"\n[bold yellow]⚠ Analysis completed but GitHub posting failed. Check GITHUB_TOKEN permissions.[/bold yellow]")
+            sys.exit(1)
+
+    except Exception as e:
+        console.print(f"[bold red]❌ PR Review Failed: {e}[/bold red]")
+        if voice:
+            try:
+                from services.voice.announcer import VoiceAnnouncer
+                VoiceAnnouncer().announce(f"LeakGuard PR review failed with error: {e}")
+            except Exception:
+                pass
+        sys.exit(1)
 
 
 

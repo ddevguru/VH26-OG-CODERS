@@ -22,6 +22,7 @@ from packages.saas.routers import (
     ai_review,
     phase16,
     firewall_diff,
+    dataflow,
 )
 
 
@@ -128,6 +129,8 @@ def create_app() -> FastAPI:
     app.include_router(phase16.router, prefix=api_prefix)
     app.include_router(phase16.router)
     app.include_router(firewall_diff.router)
+    app.include_router(dataflow.router, prefix=api_prefix)
+    app.include_router(dataflow.router)
 
 
     @app.get("/health", tags=["Health"])

@@ -135,8 +135,12 @@ class AIRemediator:
                     # Indent downstream code in the same scope block
                     if l.strip().startswith(f"{var_name}.close()"):
                         continue  # Skip redundant close inside with block
-                    if l.strip() and len(l) - len(l.lstrip()) == indent:
-                        new_lines.append(f"    {l}")
+                    if l.strip():
+                        cur_indent = len(l) - len(l.lstrip())
+                        if cur_indent >= indent:
+                            new_lines.append(f"    {l}")
+                        else:
+                            new_lines.append(l)
                     else:
                         new_lines.append(l)
                 else:
@@ -154,8 +158,12 @@ class AIRemediator:
             new_lines = lines[:target_line_idx]
             new_lines.append(f"{leading_ws}with {expr}:")
             for l in lines[target_line_idx + 1:]:
-                if l.strip() and len(l) - len(l.lstrip()) == indent:
-                    new_lines.append(f"    {l}")
+                if l.strip():
+                    cur_indent = len(l) - len(l.lstrip())
+                    if cur_indent >= indent:
+                        new_lines.append(f"    {l}")
+                    else:
+                        new_lines.append(l)
                 else:
                     new_lines.append(l)
 

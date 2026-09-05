@@ -12,6 +12,7 @@ from packages.saas.schemas.organization import (
     TeamCreate,
     TeamResponse,
     MemberRoleUpdate,
+    InviteMemberRequest,
     MemberResponse,
 )
 from packages.saas.schemas.common import PaginatedResponse
@@ -41,21 +42,15 @@ def create_organization(
     ctx: AuthContext = Depends(require_role(RoleEnum.OWNER)),
     db: Session = Depends(get_db),
 ):
-    slug = req.slug or slugify(req.name)
-    existing = db.query(Organization).filter(Organization.slug == slug).first()
+    existing = db.query(Organization).filter(Organization.id == ctx.org_id).first()
     if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Slug already in use")
+        return OrganizationResponse(id=existing.id, name=existing.name, slug=existing.slug, created_at=existing.created_at)
 
-    org = Organization(name=req.name, slug=slug)
+    org_slug = req.slug or slugify(req.name)
+    org = Organization(id=ctx.org_id, name=req.name, slug=org_slug)
     db.add(org)
-    db.flush()
-
-    role = UserOrgRole(user_id=ctx.user.id, org_id=org.id, role=RoleEnum.OWNER.value)
-    db.add(role)
     db.commit()
     db.refresh(org)
-
-    log_audit_event(db, org_id=org.id, user_id=ctx.user.id, action="create_organization", resource_type="Organization", resource_id=org.id)
     return OrganizationResponse(id=org.id, name=org.name, slug=org.slug, created_at=org.created_at)
 
 
@@ -64,10 +59,7 @@ def list_teams(
     ctx: AuthContext = Depends(require_role(RoleEnum.VIEWER)), db: Session = Depends(get_db)
 ):
     teams = db.query(Team).filter(Team.org_id == ctx.org_id).all()
-    return [
-        TeamResponse(id=t.id, org_id=t.org_id, name=t.name, description=t.description, created_at=t.created_at)
-        for t in teams
-    ]
+    return [TeamResponse(id=t.id, org_id=t.org_id, name=t.name, description=t.description, created_at=t.created_at) for t in teams]
 
 
 @router.post("/teams", response_model=TeamResponse, status_code=status.HTTP_201_CREATED)
@@ -76,12 +68,13 @@ def create_team(
     ctx: AuthContext = Depends(require_role(RoleEnum.ADMIN)),
     db: Session = Depends(get_db),
 ):
-    team = Team(org_id=ctx.org_id, name=req.name, description=req.description)
+    import uuid
+    team = Team(id=str(uuid.uuid4()), org_id=ctx.org_id, name=req.name, description=req.description)
     db.add(team)
     db.commit()
     db.refresh(team)
 
-    log_audit_event(db, org_id=ctx.org_id, user_id=ctx.user.id, action="create_team", resource_type="Team", resource_id=team.id)
+    log_audit_event(db, org_id=ctx.org_id, user_id=ctx.user.id if ctx.user else "system", action="create_team", resource_type="Team", resource_id=team.id)
     return TeamResponse(id=team.id, org_id=team.org_id, name=team.name, description=team.description, created_at=team.created_at)
 
 
@@ -109,6 +102,72 @@ def list_members(
     return PaginatedResponse(items=items, total=total, limit=limit, offset=offset, has_more=(offset + limit) < total)
 
 
+@router.post("/members/invite", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
+def invite_member(
+    req: InviteMemberRequest,
+    ctx: AuthContext = Depends(require_role(RoleEnum.ADMIN)),
+    db: Session = Depends(get_db),
+):
+    import uuid
+    from packages.saas.auth.jwt import get_password_hash
+
+    email_clean = req.email.strip().lower()
+    valid_roles = [r.value for r in RoleEnum]
+    
+    # Flexible case matching for roles
+    role_matched = next((r for r in valid_roles if r.lower() == req.role.lower()), None)
+    if not role_matched:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid role. Must be one of {valid_roles}")
+
+    # Find or create user
+    user = db.query(User).filter(User.email == email_clean).first()
+    if not user:
+        user = User(
+            id=str(uuid.uuid4()),
+            email=email_clean,
+            full_name=req.full_name or email_clean.split("@")[0].capitalize(),
+            hashed_password=get_password_hash("LeakGuard2026!"),
+            is_active=True,
+            is_superuser=False,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    # Associate UserOrgRole
+    role_rec = db.query(UserOrgRole).filter(UserOrgRole.org_id == ctx.org_id, UserOrgRole.user_id == user.id).first()
+    if role_rec:
+        role_rec.role = role_matched
+    else:
+        role_rec = UserOrgRole(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            org_id=ctx.org_id,
+            role=role_matched,
+        )
+        db.add(role_rec)
+
+    db.commit()
+
+    log_audit_event(
+        db,
+        org_id=ctx.org_id,
+        user_id=ctx.user.id if ctx.user else "system",
+        action="invite_teammate",
+        resource_type="UserOrgRole",
+        resource_id=role_rec.id,
+        details={"email": email_clean, "role": role_matched},
+    )
+
+    return MemberResponse(
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        role=role_rec.role,
+        created_at=user.created_at,
+    )
+
+
 @router.put("/members/role", response_model=MemberResponse)
 def update_member_role(
     req: MemberRoleUpdate,
@@ -120,14 +179,15 @@ def update_member_role(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found in organization")
 
     valid_roles = [r.value for r in RoleEnum]
-    if req.role not in valid_roles:
+    role_matched = next((r for r in valid_roles if r.lower() == req.role.lower()), None)
+    if not role_matched:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid role. Must be one of {valid_roles}")
 
-    role_record.role = req.role
+    role_record.role = role_matched
     db.commit()
 
     user = db.query(User).filter(User.id == req.user_id).first()
-    log_audit_event(db, org_id=ctx.org_id, user_id=ctx.user.id, action="update_member_role", resource_type="UserOrgRole", resource_id=role_record.id, details={"role": req.role})
+    log_audit_event(db, org_id=ctx.org_id, user_id=ctx.user.id if ctx.user else "system", action="update_member_role", resource_type="UserOrgRole", resource_id=role_record.id, details={"role": role_matched})
 
     return MemberResponse(
         user_id=user.id,

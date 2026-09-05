@@ -804,14 +804,15 @@ def explain(
 
 @app.command()
 def fix(
-    file: Path = typer.Option(..., "--file", help="Target Python source file"),
+    target: Path = typer.Argument(Path("."), help="Target Python file or directory path to fix"),
     finding: str = typer.Option("LEAK_001", "--finding", "-f", help="Finding ID to fix"),
     strategy: str = typer.Option("context-manager", "--strategy", help="Strategy: context-manager | try-finally | close-insertion | exception-safe | async-cleanup"),
     verify: bool = typer.Option(True, "--verify/--no-verify", help="Execute isolated deterministic verification"),
 ) -> None:
     """Generates candidate AI fix and executes authoritative isolated deterministic verification."""
     from interfaces.cli.review import run_fix_cmd
-    run_fix_cmd(target_file=file, finding_id=finding)
+    run_fix_cmd(target_file=target, finding_id=finding)
+
 
 
 @app.command()

@@ -357,6 +357,20 @@ class ApiClient {
     return this.request<PaginatedResponse<any>>(`/organizations/members?limit=${limit}&offset=${offset}`);
   }
 
+  async inviteMember(email: string, full_name?: string, role = "DEVELOPER"): Promise<any> {
+    return this.request<any>("/organizations/members/invite", {
+      method: "POST",
+      body: JSON.stringify({ email, full_name, role }),
+    });
+  }
+
+  async updateMemberRole(userId: string, role: string): Promise<any> {
+    return this.request<any>("/organizations/members/role", {
+      method: "PUT",
+      body: JSON.stringify({ user_id: userId, role }),
+    });
+  }
+
   async getTeams(): Promise<any[]> {
     return this.request<any[]>("/organizations/teams");
   }
@@ -428,7 +442,7 @@ class ApiClient {
     });
   }
 
-  // AI Agent Catalog APIs
+  // AI Agent Catalog & Traces APIs
   async getAIAgents(): Promise<any[]> {
     return this.request<any[]>("/ai/agents");
   }
@@ -438,6 +452,22 @@ class ApiClient {
       method: "POST",
       body: JSON.stringify(payload),
     });
+  }
+
+  async getAIFixes(): Promise<any[]> {
+    return this.request<any[]>("/ai/fixes");
+  }
+
+  async getAIAgentTraces(): Promise<any[]> {
+    return this.request<any[]>("/ai/traces");
+  }
+
+  async getFileBreakdownStatus(): Promise<any> {
+    return this.request<any>("/dataflow/file-status");
+  }
+
+  async getDataflowChains(): Promise<any[]> {
+    return this.request<any[]>("/dataflow/chains");
   }
 }
 

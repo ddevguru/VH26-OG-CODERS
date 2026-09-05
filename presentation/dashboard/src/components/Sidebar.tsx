@@ -18,11 +18,13 @@ import {
   ShieldAlert,
   Zap,
   Bot,
+  GitFork,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { name: "Overview", href: "/", icon: LayoutDashboard },
   { name: "AI Agents", href: "/agents", icon: Bot },
+  { name: "Data Flow", href: "/data-flow", icon: GitFork },
   { name: "Repositories", href: "/repositories", icon: FolderGit2 },
   { name: "Scans", href: "/scans", icon: Activity },
   { name: "Findings", href: "/findings", icon: AlertTriangle },

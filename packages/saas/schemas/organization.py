@@ -33,6 +33,12 @@ class MemberRoleUpdate(BaseModel):
     role: str = Field(..., description="Owner, Admin, Security, Developer, Viewer")
 
 
+class InviteMemberRequest(BaseModel):
+    email: str = Field(..., description="Teammate email address")
+    full_name: Optional[str] = None
+    role: str = Field("DEVELOPER", description="Owner, Admin, Security, Developer, Viewer")
+
+
 class MemberResponse(BaseModel):
     user_id: str
     email: str

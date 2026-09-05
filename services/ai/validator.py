@@ -78,34 +78,46 @@ class PatchValidator:
             steps.append("Step 4: Execute LeakGuard Static Analysis on Patched Code")
             patched_diagnostics = self.engine.analyze_file(tmp_path)
 
-            # Step 5: Verify Original Finding Disappears
+            # Step 5: Verify Target Leak Finding Disappears
             steps.append("Step 5: Verify Target Leak Finding Disappears")
+            target_var = target_diagnostic.resource_variable
+            target_line = target_diagnostic.location.start.line if (target_diagnostic.location and target_diagnostic.location.start) else None
+
             original_cleared = True
             for d in patched_diagnostics:
-                if (
-                    d.rule_id == target_diagnostic.rule_id
-                    and d.classification == target_diagnostic.classification
-                ):
-                    original_cleared = False
-                    break
+                d_var = d.resource_variable
+                d_line = d.location.start.line if (d.location and d.location.start) else None
+                if d.rule_id == target_diagnostic.rule_id and d.classification == target_diagnostic.classification:
+                    if target_var and d_var == target_var:
+                        original_cleared = False
+                        break
+                    elif target_line and d_line == target_line:
+                        original_cleared = False
+                        break
 
             report.original_finding_cleared = original_cleared
 
-            # Step 6: Verify No New Blocking Findings
+            # Step 6: Verify No New Leaks Introduced (excluding pre-existing leaks in original file)
             steps.append("Step 6: Verify No New Leaks Introduced")
-            blocking_leaks = [
+            orig_diagnostics = self.engine.analyze_code(original_source, filename=file_name)
+            orig_keys = {
+                (d.resource_variable, d.rule_id)
+                for d in orig_diagnostics
+            }
+            new_introduced_leaks = [
                 d for d in patched_diagnostics
                 if d.classification in (Classification.DEFINITE_LEAK, Classification.POTENTIAL_LEAK)
+                and (d.resource_variable, d.rule_id) not in orig_keys
             ]
-            report.new_findings_count = len(blocking_leaks)
+            report.new_findings_count = len(new_introduced_leaks)
 
             # Evaluation
             if not report.original_finding_cleared:
                 report.is_valid = False
-                report.failure_reason = "Original leak finding was not cleared by the patch."
+                report.failure_reason = f"Original leak finding for '{target_var or 'resource'}' was not cleared by the patch."
             elif report.new_findings_count > 0:
                 report.is_valid = False
-                report.failure_reason = f"Patch introduced {report.new_findings_count} new leak findings."
+                report.failure_reason = f"Candidate patch introduced {report.new_findings_count} new resource leaks."
             else:
                 report.is_valid = True
                 steps.append("Step 9: Passed All Automated Checks — Human Approval Required")

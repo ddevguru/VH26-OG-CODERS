@@ -4,8 +4,8 @@ For live terminal testing: python -m leakguard scan uncommitted_leak_file.py --v
 
 def read_custom_log(log_path: str):
     # Unclosed file handle 'file_obj'
-    file_obj = open(log_path, "r")
-    lines = file_obj.readlines()
-    if len(lines) > 100:
-        return lines[:100]
-    return lines
+    with open(log_path, "r") as file_obj:
+        lines = file_obj.readlines()
+        if len(lines) > 100:
+            return lines[:100]
+        return lines

@@ -1,5 +1,7 @@
 import pytest
+from typing import Dict, Any
 from fastapi.testclient import TestClient
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -54,7 +56,9 @@ def test_ai_agents_hub_fastapi_endpoints():
     client = TestClient(app)
 
     token = create_access_token({"sub": user.id})
-    headers = {"Authorization": f"Bearer {token}", "X-Organization-ID": org.id}
+    headers: Dict[str, str] = {"Authorization": f"Bearer {token}", "X-Organization-ID": str(org.id)}
+
+
 
     # GET Agents Catalog
     resp = client.get("/ai/agents", headers=headers)

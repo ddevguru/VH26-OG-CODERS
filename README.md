@@ -10,8 +10,6 @@
 
 ---
 
-> 📚 **Complete Project Master Documentation & Presentation Guide**: See [PROJECT_MASTER_DOCUMENTATION.md](file:///c:/LeakGaurd/PROJECT_MASTER_DOCUMENTATION.md) for full architecture map, CLI code lines, step-by-step lifecycles, and evaluation talking points.
-
 ## 📌 Executive Overview
 
 **LeakGuard** is an enterprise-grade static analysis and AI code review platform built to eliminate **resource leaks** (unclosed database connections, sockets, files, HTTP sessions, locks, subprocesses, and temporary files) across Python codebases.
@@ -188,6 +186,14 @@ $$\text{Risk Score} = \min\left(100, \sum_{\text{findings}} \left( W_{\text{reso
 - 🌐 **HTTP_SESSION** = 65
 - 📄 **FILE** = 50
 - 📁 **TEMP_FILE** = 40
+
+---
+
+## 📖 Documentation
+
+- 📚 **Master Project Documentation & Presentation Guide**: [PROJECT_MASTER_DOCUMENTATION.md](file:///c:/LeakGaurd/PROJECT_MASTER_DOCUMENTATION.md) — Complete codebase map, line references, lifecycles, and evaluation talking points.
+- 🔬 **Technical Architecture**: [docs/TECHNICAL_ARCHITECTURE.md](file:///c:/LeakGaurd/docs/TECHNICAL_ARCHITECTURE.md) — Deep-dive AST equations, AI agent specifications, and database schemas.
+- 🤖 **AI Agents & Live Voice Guide**: [AI_AGENTS_AND_LIVE_VOICE_GUIDE.md](file:///c:/LeakGaurd/AI_AGENTS_AND_LIVE_VOICE_GUIDE.md) — Voice synthesizer & AI hub guide.
 
 ---
 

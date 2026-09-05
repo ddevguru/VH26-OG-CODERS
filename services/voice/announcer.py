@@ -26,7 +26,14 @@ class VoiceAnnouncer:
                 # Windows PowerShell Speech Synthesizer (Zero external dependencies required on Windows)
                 if sys.platform == "win32":
                     clean_text = text.replace('"', '\\"').replace("'", "''")
-                    ps_cmd = f'Add-Type -AssemblyName System.Speech; $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; $synth.Speak("{clean_text}");'
+                    ps_cmd = (
+                        "Add-Type -AssemblyName System.Speech; "
+                        "$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+                        "$synth.SetOutputToDefaultAudioDevice(); "
+                        f'$synth.Speak("{clean_text}");'
+                    )
+
+
                     subprocess.run(
                         ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
                         stdout=subprocess.DEVNULL,

@@ -71,10 +71,32 @@ export const VoiceAgent: React.FC<VoiceAgentProps> = ({ autoAnnounceText, onVoic
     } catch (e) {}
   };
 
+  // User gesture unlock for browser audio autoplay policies
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const unlockAudio = () => {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.resume();
+      }
+    };
+
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+  }, []);
+
   // Text-To-Speech Output Engine
   const speak = (text: string) => {
     if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
       window.speechSynthesis.cancel();
       playChime();
 
@@ -82,6 +104,7 @@ export const VoiceAgent: React.FC<VoiceAgentProps> = ({ autoAnnounceText, onVoic
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.rate = rate;
         utterance.pitch = pitch;
+        utterance.volume = 1.0;
 
         if (selectedVoice && voices.length > 0) {
           const matchedVoice = voices.find((v) => v.name === selectedVoice);
@@ -91,8 +114,13 @@ export const VoiceAgent: React.FC<VoiceAgentProps> = ({ autoAnnounceText, onVoic
         utterance.onstart = () => setSpeaking(true);
         utterance.onend = () => setSpeaking(false);
         utterance.onerror = () => setSpeaking(false);
+
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
         window.speechSynthesis.speak(utterance);
-      }, 150);
+        window.speechSynthesis.resume();
+      }, 100);
     } catch (e) {}
   };
 
@@ -101,6 +129,7 @@ export const VoiceAgent: React.FC<VoiceAgentProps> = ({ autoAnnounceText, onVoic
       speak(autoAnnounceText);
     }
   }, [autoAnnounceText, muted]);
+
 
   // Speech-to-Text Voice Command Engine
   const toggleListening = () => {

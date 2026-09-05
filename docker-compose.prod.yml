@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  # LeakGuard FastAPI Commercial SaaS Backend
+  leakguard-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LEAKGUARD_ENV=production
+      - DATABASE_URL=sqlite:///./leakguard.db
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET:-leakguard_secret_key}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    command: python -m leakguard server --host 0.0.0.0 --port 8000
+    restart: always
+
+  # LeakGuard Commercial Next.js Web Dashboard
+  leakguard-dashboard:
+    build:
+      context: ./presentation/dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - leakguard-backend
+    restart: always

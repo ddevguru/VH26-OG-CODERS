@@ -558,6 +558,17 @@ When presenting LeakGuard to evaluators or judges, use these 5 core talking poin
 
 ---
 
+## 🚀 Live Production Deployment & Extension Marketplace
+
+LeakGuard can be deployed to production and distributed across public marketplaces:
+
+- 🌐 **Live Web Platform Deployment**: See [DEPLOYMENT_AND_LIVE_GUIDE.md](file:///c:/LeakGaurd/DEPLOYMENT_AND_LIVE_GUIDE.md) for 1-command Docker Compose deployment (`docker-compose.prod.yml`), Vercel dashboard hosting, and Render backend deployment.
+- 📦 **PyPI Public Package (`pip install leakguard`)**: Package distribution guide for publishing to PyPI (`python -m build && twine upload dist/*`).
+- 🔌 **VS Code Extension (`extensions/vscode/`)**: VS Code Marketplace manifest (`package.json`) & driver (`extension.js`) for publishing `vsce package` live.
+- 🤖 **GitHub Action Marketplace (`integrations/github_action/`)**: Custom Action manifest (`action.yml`) for publishing to GitHub Marketplace.
+
+---
+
 ## 🧪 Running Automated Unit Tests
 
 ```bash

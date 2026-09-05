@@ -17,7 +17,7 @@ if hasattr(sys.stdout, "reconfigure"):
 from core.analysis.engine import AnalysisEngine
 from services.scan.scanner import ProjectScanner
 from core.common.config import LeakGuardConfig
-from core.common.models import Diagnostic, Classification
+from core.common.models import Diagnostic, Classification, Span, SourceLocation
 from core.ownership.graph import ResourceOwnershipGraph
 from core.analysis.what_if import WhatIfEngine
 from core.analysis.scorer import RiskScorer
@@ -50,13 +50,15 @@ def run_ownership_cmd(
         scan_res = scanner.scan_directory(target_file)
         diagnostics = scan_res.diagnostics
 
+    from core.common.models import Span, SourceLocation
+
     diag = diagnostics[0] if diagnostics else Diagnostic(
         finding_id=finding_id or "LEAK_001",
         rule_id="RULE_LEAK_001",
         message="Resource Lifetime Graph",
         classification=Classification.DEFINITE_LEAK,
         file_path=str(target_file),
-        location=None,
+        location=Span(start=SourceLocation(line=1, column=1), end=SourceLocation(line=1, column=1)),
         resource_type="RESOURCE",
         resource_variable="conn",
         reason="Resource ownership tracked along CFG",
@@ -161,7 +163,7 @@ def run_risk_cmd(
         message="Resource Leak",
         classification=Classification.DEFINITE_LEAK,
         file_path=str(t_path),
-        location=None,
+        location=Span(start=SourceLocation(line=1, column=1), end=SourceLocation(line=1, column=1)),
         resource_type="DATABASE",
         resource_variable="conn",
         reason="Resource handle unclosed at function exit path.",
